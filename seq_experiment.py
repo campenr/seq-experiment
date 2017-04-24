@@ -75,7 +75,7 @@ class SeqExp(object):
         )
 
         if self._classification_table is not None:
-            classification_summary = 'classification_table:\t{features} features x {ranks} ranks'.format(
+            classification_summary = 'classification_table:\t{features} features x {ranks} classification ranks'.format(
                 features=len(self._classification_table.index),
                 ranks=len(self._classification_table.columns)
             )
@@ -98,7 +98,7 @@ class SeqExp(object):
         return '\n'.join(outputs)
 
 
-class FeatureTable(object):
+class FeatureTable(pd.DataFrame):
     """
     Feature table object.
 
@@ -109,9 +109,14 @@ class FeatureTable(object):
 
     """
 
+    @property
+    def _constructor(self):
+        return FeatureTable
 
-    def __init__(self):
-        pass
+    def __init__(self, x=True, *args, **kwargs):
+        super(FeatureTable, self).__init__(*args, **kwargs)
+        print(x)
+
 
 
 class ClassificationTable(object):
