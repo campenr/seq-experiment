@@ -1,4 +1,5 @@
-
+import numpy as np
+import pandas as pd
 
 class SeqExp(object):
     """
@@ -18,17 +19,83 @@ class SeqExp(object):
         return self._feature_table
 
     def set_feature_table(self, value):
-        self._feature_table = value
+        # enforce correct type for feature_table
+        if isinstance(value, pd.DataFrame):
+            self._feature_table = value
+        else:
+            raise(TypeError('feature_table should be of type pd.DataFrame'))
 
     def get_classification_table(self):
         return self._classification_table
 
     def set_classification_table(self, value):
-        self._classification_table = value
+        # enforce correct type for classification_table
+        if isinstance(value, pd.DataFrame):
 
+            # check that classification_table matches the feature_table
+            if value.index.tolist() != self._feature_table.index.tolist():
+                raise IndexError('classification_table index does not match the feature_table index.')
+            else:
+                self._classification_table = value
 
+        elif value is None:
+            self._classification_table = None
+        else:
+            raise(TypeError('classification_table should be of type pd.DataFrame or None'))
+
+    def get_sample_data_table(self):
+        return self._sample_data
+
+    def set_sample_data_table(self, value):
+        # enforce correct type for classification_table
+        if isinstance(value, pd.DataFrame):
+
+            # check that classification_table matches the feature_table
+            if value.index.tolist() != self._feature_table.columns.values.tolist():
+                raise IndexError('sample_data_table index does not match the feature_table columns.')
+            else:
+                self._sample_data_table = value
+
+        elif value is None:
+            self._sample_data_table = None
+        else:
+            raise (TypeError('sample_data_table should be of type pd.DataFrame or None'))
+
+    # configure properties
     feature_table = property(fget=get_feature_table, fset=set_feature_table)
     classification_table = property(fget=get_classification_table, fset=set_classification_table)
+    sample_data_table = property(fget=get_sample_data_table, fset=set_sample_data_table)
+
+    def __str__(self):
+        """."""
+
+        feature_summary = 'feature_table:\t{features} features x {classes} classes'.format(
+            features=len(self._feature_table.index),
+            classes=len(self._feature_table.columns)
+        )
+
+        if self._classification_table is not None:
+            classification_summary = 'classification_table:\t{features} features x {ranks} ranks'.format(
+                features=len(self._classification_table.index),
+                ranks=len(self._classification_table.columns)
+            )
+        else:
+            classification_summary = None
+
+        if self._sample_data_table is not None:
+            sample_data_summary = 'sample_data_table:\t{classes} classes x {sample_data} sample data'.format(
+                classes=len(self._sample_data_table.index),
+                sample_data=len(self._sample_data_table.columns)
+            )
+        else:
+            sample_data_summary = None
+
+        outputs = [feature_summary]
+        for i in [classification_summary, sample_data_summary]:
+            if i is not None:
+                outputs.append(i)
+
+        return '\n'.join(outputs)
 
 
 class FeatureTable(object):
