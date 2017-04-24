@@ -1,0 +1,5 @@
+# Project dev files
+.idea/
+
+# pycache files
+__pycache__/
