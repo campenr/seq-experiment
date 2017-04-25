@@ -1,7 +1,7 @@
 import numpy as np
 import pandas as pd
 
-from seq_experiment import SeqExp, FeatureTable
+from seq_experiment import SeqExp, FeatureTable, ClassificationTable, SampleDataTable
 
 # set random seed
 np.random.seed(123)
@@ -42,4 +42,23 @@ columns=sample_data_names
 # print(seq_exp)
 
 feature_table = FeatureTable(test_feature_table)
-print(feature_table.describe())
+classification_table = ClassificationTable(test_classification_table)
+sample_data_table = SampleDataTable(test_sample_data_table)
+# print(feature_table)
+
+seq_exp = SeqExp(feature_table, classification_table, sample_data_table)
+# print('initial:')
+# print(seq_exp)
+# print()
+
+# seq_exp = seq_exp[['class_0', 'class_1']]
+# seq_exp = seq_exp[:3]
+# seq_exp = seq_exp['class_0']
+# print('post slice:')
+# print(seq_exp)
+# print(seq_exp.feature_table)
+# print(seq_exp.classification_table)
+# print(seq_exp.sample_data_table)
+
+
+seq_exp.plot_bar()

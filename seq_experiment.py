@@ -1,5 +1,8 @@
 import numpy as np
 import pandas as pd
+import matplotlib.pyplot as plt
+from matplotlib.cm import get_cmap
+from matplotlib.colors import LinearSegmentedColormap
 
 class SeqExp(object):
     """
@@ -20,17 +23,17 @@ class SeqExp(object):
 
     def set_feature_table(self, value):
         # enforce correct type for feature_table
-        if isinstance(value, pd.DataFrame):
+        if isinstance(value, FeatureTable):
             self._feature_table = value
         else:
-            raise(TypeError('feature_table should be of type pd.DataFrame'))
+            raise(TypeError('feature_table should be of type FeatureTable'))
 
     def get_classification_table(self):
         return self._classification_table
 
     def set_classification_table(self, value):
         # enforce correct type for classification_table
-        if isinstance(value, pd.DataFrame):
+        if isinstance(value, ClassificationTable):
 
             # check that classification_table matches the feature_table
             if value.index.tolist() != self._feature_table.index.tolist():
@@ -41,14 +44,14 @@ class SeqExp(object):
         elif value is None:
             self._classification_table = None
         else:
-            raise(TypeError('classification_table should be of type pd.DataFrame or None'))
+            raise(TypeError('classification_table should be of type ClassificationTable or None'))
 
     def get_sample_data_table(self):
-        return self._sample_data
+        return self._sample_data_table
 
     def set_sample_data_table(self, value):
         # enforce correct type for classification_table
-        if isinstance(value, pd.DataFrame):
+        if isinstance(value, SampleDataTable):
 
             # check that classification_table matches the feature_table
             if value.index.tolist() != self._feature_table.columns.values.tolist():
@@ -59,7 +62,7 @@ class SeqExp(object):
         elif value is None:
             self._sample_data_table = None
         else:
-            raise (TypeError('sample_data_table should be of type pd.DataFrame or None'))
+            raise (TypeError('sample_data_table should be of type SampleDataTable or None'))
 
     # configure properties
     feature_table = property(fget=get_feature_table, fset=set_feature_table)
@@ -95,7 +98,73 @@ class SeqExp(object):
             if i is not None:
                 outputs.append(i)
 
-        return '\n'.join(outputs)
+        return '\n'.join(outputs) + '\n'
+
+    def __getitem__(self, item):
+        """Subset the data contained within the SeqExp by columns or rows."""
+
+        # TODO: implement indexing by single column i.e. seq_exp['class_0']. Normally this returns a Series,
+        # TODO: but we do not have a Series implementation so need to handle this differently.
+
+        # if the subset item is type `slice` then we are subsetting by classes in the feature table
+        # if the subset item is type `list` then we are subsetting by features in the feature table
+
+        print('__getitem__.item: ', item)
+        print('type(__getitem__.item): ', type(item))
+
+        # feature_table is always subset
+        self.feature_table = self.feature_table[item]
+
+        # if the subset is by rows then we need to also subset the classification_table if it exists
+        if isinstance(item, slice):
+            if self.classification_table is not None:
+                self.classification_table = self.classification_table[item]
+
+        # if the subset is by columns then we need to also subset the sample_data_table if it exists
+        if isinstance(item, list):
+            if self.sample_data_table is not None:
+                self.sample_data_table = self.sample_data_table.ix[item]
+
+        return self
+
+    def plot_bar(self, **kwargs):
+        """Plots bar chart using matplotlib."""
+
+        # create custom cmap
+        paired_cmap = get_cmap('Paired')
+
+        paired_cols = []
+        for i in paired_cmap.colors:
+            rgbs = []
+            for j in i:
+                rgbs.append(j)
+
+            paired_cols.append(rgbs)
+
+        cust_cmap = LinearSegmentedColormap.from_list('custom_map', paired_cols)
+
+        # specify our custom arguments for plotting bar charts
+        default_args = {
+            'stacked': True,
+            'cmap': cust_cmap,
+            'width': 0.8,
+            'linewidth': 1,
+            'edgecolor': 'black'
+        }
+
+        # override kind if specified by the user
+        kwargs['kind'] = 'bar'
+
+        # allow user defined kwargs to override defaults
+        for arg, value in default_args.items():
+            if arg not in kwargs.keys():
+                kwargs[arg] = value
+
+        # correct table orientation for plotting
+        bar_plot = self.feature_table.transpose().plot(**kwargs)
+
+        return bar_plot
+
 
 
 class FeatureTable(pd.DataFrame):
@@ -113,13 +182,11 @@ class FeatureTable(pd.DataFrame):
     def _constructor(self):
         return FeatureTable
 
-    def __init__(self, x=True, *args, **kwargs):
+    def __init__(self, *args, **kwargs):
         super(FeatureTable, self).__init__(*args, **kwargs)
-        print(x)
 
 
-
-class ClassificationTable(object):
+class ClassificationTable(pd.DataFrame):
     """
     Classification table object.
 
@@ -130,10 +197,15 @@ class ClassificationTable(object):
 
     """
 
-    def __init__(self):
-        pass
+    @property
+    def _constructor(self):
+        return ClassificationTable
 
-class SampleDataTable(object):
+    def __init__(self, *args, **kwargs):
+        super(ClassificationTable, self).__init__(*args, **kwargs)
+
+
+class SampleDataTable(pd.DataFrame):
     """
     Sample data table.
 
@@ -143,6 +215,10 @@ class SampleDataTable(object):
 
     """
 
-    def __init__(self):
-        pass
+    @property
+    def _constructor(self):
+        return SampleDataTable
+
+    def __init__(self, *args, **kwargs):
+        super(SampleDataTable, self).__init__(*args, **kwargs)
 
