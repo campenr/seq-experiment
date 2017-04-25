@@ -130,6 +130,16 @@ class SeqExp(object):
     def plot_bar(self, **kwargs):
         """Plots bar chart using matplotlib."""
 
+        # # try importing seaborn to make prettier graphs
+        # try:
+        #     import seaborn as sns
+        #
+        # except ImportError:
+        #     pass
+
+        # make pretty
+        plt.style.use('seaborn-white')
+
         # create custom cmap
         paired_cmap = get_cmap('Paired')
 
@@ -149,21 +159,22 @@ class SeqExp(object):
             'cmap': cust_cmap,
             'width': 0.8,
             'linewidth': 1,
-            'edgecolor': 'black'
+            'edgecolor': 'black',
         }
 
         # override kind if specified by the user
         kwargs['kind'] = 'bar'
 
-        # allow user defined kwargs to override defaults
+        # TODO: allow for plotting subplots in a way that visually makes more sense
+
+        # allow user defined kwargs to override our defaults
         for arg, value in default_args.items():
             if arg not in kwargs.keys():
                 kwargs[arg] = value
 
-        # correct table orientation for plotting
-        bar_plot = self.feature_table.transpose().plot(**kwargs)
+        ax = self.feature_table.transpose().plot(**kwargs)
 
-        return bar_plot
+        return ax
 
 
 
