@@ -60,5 +60,8 @@ seq_exp = SeqExp(feature_table, classification_table, sample_data_table)
 # print(seq_exp.classification_table)
 # print(seq_exp.sample_data_table)
 
+print(seq_exp)
 
-seq_exp.plot_bar()
+relabund = seq_exp.relabund()
+
+print(relabund.feature_table)

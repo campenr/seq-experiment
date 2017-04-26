@@ -108,24 +108,84 @@ class SeqExp(object):
 
         # if the subset item is type `slice` then we are subsetting by classes in the feature table
         # if the subset item is type `list` then we are subsetting by features in the feature table
+        # if the subset item is type `pd.Series` then we are subsetting by either classes or features
 
-        print('__getitem__.item: ', item)
-        print('type(__getitem__.item): ', type(item))
+        # print('__getitem__.item: ', item)
+        # print('type(__getitem__.item): ', type(item))
 
         # feature_table is always subset
-        self.feature_table = self.feature_table[item]
+        new_feature_table = self.feature_table[item]
 
-        # if the subset is by rows then we need to also subset the classification_table if it exists
-        if isinstance(item, slice):
-            if self.classification_table is not None:
-                self.classification_table = self.classification_table[item]
+        # construct new object
+        new_seq_exp = SeqExp(new_feature_table)
 
-        # if the subset is by columns then we need to also subset the sample_data_table if it exists
-        if isinstance(item, list):
-            if self.sample_data_table is not None:
-                self.sample_data_table = self.sample_data_table.ix[item]
+        # conditional subsetting of classification_table depending on the subsetting items type
+        if self.classification_table is not None:
+            if isinstance(item, slice):
+                new_seq_exp.classification_table = self.classification_table[item]
+            elif isinstance(item, pd.Series):
+                # only subset the classification_table if the index's match
+                # TODO: this is hacky. Would be safer to overide some of the pd.DataFrame methods / operators
+                if self.classification_table.index.tolist() == item.index.tolist():
+                    print('will trim classification_table')
+                    new_seq_exp.classification_table = self.classification_table[item]
+                else:
+                    print('wont trim classification_table')
+                    new_seq_exp.classification_table = self.classification_table
+            else:
+                new_seq_exp.classification_table = self.classification_table
 
-        return self
+        # conditional subsetting of sample_data_table depending on the subsetting items type
+        if self.sample_data_table is not None:
+            if isinstance(item, list):
+                new_seq_exp.sample_data_table = self.sample_data_table.ix[item]
+            elif isinstance(item, pd.Series):
+                # only subset the sample_data_table if the index's match
+                # TODO: this is hacky. Would be safer to overide some of the pd.DataFrame methods / operators
+                if self.sample_data_table.index.tolist() == item.index.tolist():
+                    print('will trim sample_data_table')
+                    new_seq_exp.sample_data_table = self.sample_data_table[item]
+                else:
+                    print('wont trim sample_data_table')
+                    new_seq_exp.sample_data_table = self.sample_data_table
+            else:
+                new_seq_exp.sample_data_table = self.sample_data_table
+
+
+        return new_seq_exp
+
+    def relabund(self):
+        """
+        Returns a new object with abundances converted to relative abundances.
+        
+        ..note:: This method leaves the original object intact, returning a new modified copy.
+        
+        """
+
+        new_feature_table = self.feature_table
+        class_sums = new_feature_table.sum(axis=0)
+        new_feature_table = new_feature_table.div(class_sums)
+
+        # return a new object
+        new_seq_exp = SeqExp(
+            feature_table=new_feature_table,
+            classification_table=self.classification_table,
+            sample_data_table=self.sample_data_table
+        )
+
+        return new_seq_exp
+
+    def groupby(self, rank=None, ):
+        """
+        Returns a new object with features grouped by a classification rank or a sample data name.
+        
+        ..note:: This method leaves the original obejct intact, return a new modified copy.        
+        
+        """
+
+        pass
+
+
 
     def plot_bar(self, **kwargs):
         """Plots bar chart using matplotlib."""
@@ -193,8 +253,26 @@ class FeatureTable(pd.DataFrame):
     def _constructor(self):
         return FeatureTable
 
+    @property
+    def _constructor_sliced(self):
+        return FeatureSeries
+
     def __init__(self, *args, **kwargs):
         super(FeatureTable, self).__init__(*args, **kwargs)
+
+
+class FeatureSeries(pd.Series):
+
+    @property
+    def _constructor(self):
+        return FeatureSeries
+
+    @property
+    def _constructor_expanddim(self):
+        return FeatureTable
+
+    def __init__(self, *args, **kwargs):
+        super(FeatureSeries, self).__init__(*args, **kwargs)
 
 
 class ClassificationTable(pd.DataFrame):
