@@ -4,6 +4,9 @@ import matplotlib.pyplot as plt
 from matplotlib.cm import get_cmap
 from matplotlib.colors import LinearSegmentedColormap
 
+from ordination import MDS, NMDS
+from scipy.spatial.distance import pdist, squareform
+
 class SeqExp(object):
     """
     Main sequence experiment object.
@@ -63,6 +66,14 @@ class SeqExp(object):
             self._sample_data_table = None
         else:
             raise (TypeError('sample_data_table should be of type SampleDataTable or None'))
+
+    @property
+    def sample_names(self):
+        return self.feature_table.columns.tolist()
+
+    @property
+    def feature_names(self):
+        return self.feature_table.index.tolist()
 
     # configure properties
     feature_table = property(fget=get_feature_table, fset=set_feature_table)
@@ -127,10 +138,10 @@ class SeqExp(object):
                 # only subset the classification_table if the index's match
                 # TODO: this is hacky. Would be safer to overide some of the pd.DataFrame methods / operators
                 if self.classification_table.index.tolist() == item.index.tolist():
-                    print('will trim classification_table')
+                    # print('will trim classification_table')
                     new_seq_exp.classification_table = self.classification_table[item]
                 else:
-                    print('wont trim classification_table')
+                    # print('wont trim classification_table')
                     new_seq_exp.classification_table = self.classification_table
             else:
                 new_seq_exp.classification_table = self.classification_table
@@ -143,14 +154,13 @@ class SeqExp(object):
                 # only subset the sample_data_table if the index's match
                 # TODO: this is hacky. Would be safer to overide some of the pd.DataFrame methods / operators
                 if self.sample_data_table.index.tolist() == item.index.tolist():
-                    print('will trim sample_data_table')
+                    # print('will trim sample_data_table')
                     new_seq_exp.sample_data_table = self.sample_data_table[item]
                 else:
-                    print('wont trim sample_data_table')
+                    # print('wont trim sample_data_table')
                     new_seq_exp.sample_data_table = self.sample_data_table
             else:
                 new_seq_exp.sample_data_table = self.sample_data_table
-
 
         return new_seq_exp
 
@@ -185,7 +195,68 @@ class SeqExp(object):
 
         pass
 
+    def distance(self):
+        """
+        
+        
+        :return: 
+        """
 
+        pass
+
+
+    def ordinate(self, method, distance=None, metric=None, *args, **kwargs):
+        """
+        Performs an ordination on the SeqExp object using.
+        
+        Uses either a precomputed distance/dissimilarity matrix, or computes one for the user if supplied with a valid
+        mdistance metric.
+        
+        :param method: the ordination method to use
+        :type method: str
+        :param distance: distance or dissimilarity matrix to ordinate
+        :type distance: (optional) 2d np.array like or None
+        :param metric: (optional) metric to use for computing a distance matrix
+        :type metric: str
+
+        :return: 
+        
+        ..note:: User must supply either a precomputed distance matrix or a metric to compute a distance matrix with,
+            but not both. If a metric is supplied it must be a valid metric for `scipy.spatial.distance.pdist`.
+        
+        ..see also:: scipy.spatial.distance
+                
+        """
+
+        ord_methods = {
+            'MDS': MDS,
+            'NMDS': NMDS
+        }
+        dist_metrics = ['braycurtis']
+
+        has_distance = distance is not None
+        has_metric = metric is not None
+
+        has_distance_or_metric = has_distance or has_metric
+        has_distance_and_metric = has_distance and has_metric
+
+        # enforce only distance or metric, but not both
+        if not (has_distance_or_metric and not has_distance_and_metric):
+            raise(ValueError('must supply either distance or metric, and not both.'))
+
+        # check for valid method
+        if method in ord_methods:
+
+            if has_distance:
+                # perform ordination with specified method, passing additional arguments to the ordination functions
+                ord_methods[method](dissimilarity_mtx=distance, *args, *kwargs)
+
+            else:
+                if metric in dist_metrics:
+                    # need to transpose feature table to get it in the correct orientation for pdist
+                    dist = squareform(pdist(self.feature_table.transpose(), metric=metric))
+
+        pass
 
     def plot_bar(self, **kwargs):
         """Plots bar chart using matplotlib."""

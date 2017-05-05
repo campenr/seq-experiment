@@ -2,6 +2,8 @@ import unittest
 import numpy as np
 import pandas as pd
 
+from scipy.spatial.distance import squareform, pdist
+
 from seq_experiment import SeqExp, FeatureTable, ClassificationTable, SampleDataTable
 
 
@@ -139,7 +141,19 @@ class Test(unittest.TestCase):
         except Exception as e:
             self.fail(e)
 
+    def test_ordination_with_distance(self):
 
+        seq_exp = SeqExp(
+            feature_table=self.test_feature_table,
+            classification_table=self.test_classification_table,
+            sample_data_table=self.test_sample_data_table
+        )
+
+        try:
+            dist = squareform(pdist(seq_exp.feature_table.transpose(), metric='braycurtis'))
+            ord = seq_exp.ordinate(method='NMDS', distance=dist)#, verbosity=0)
+        except Exception as e:
+            self.fail(e)
 
 if __name__ == '__main__':
     unittest.main()

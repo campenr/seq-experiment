@@ -14,9 +14,10 @@ import numpy as np
 # from numpy.random import seed, normal as random_gauss
 # from numpy.linalg import norm, svd
 from operator import itemgetter
-
 # import cogent.maths.scipy_optimize as optimize
-## USE CUSTOMISED VERSION OF PCOA IN pcoa.py
+from scipy import optimize as scipy_opt
+import scipy_optimize as scipy_opt_mod
+
 # from cogent.cluster.metric_scaling import principal_coordinates_analysis
 
 __author__ = "Justin Kuczynski"
@@ -62,8 +63,8 @@ class NMDS(object):
     Note: increasing MIN_ABS_STRESS causes nans to return from stress fn
     """
 
-    def __init__(self, dissimilarity_mtx, initial_pts="pcoa",
-                 dimension=2, rand_seed=None, optimization_method=0, verbosity=1,
+    def __init__(self, dissimilarity_mtx, initial_pts="random",
+                 dimension=2, rand_seed=None, optimization_method=1, verbosity=1,
                  max_iterations=50, setup_only=False, min_rel_improvement=1e-3,
                  min_abs_stress=1e-5):
         """    
@@ -102,23 +103,54 @@ class NMDS(object):
         # note that in the rest of the code, only the order matters, the values
         # of the dissimilarity matrix aren't used
 
-        if initial_pts == "random":
-            self.points = self._get_initial_pts(dimension, point_range)
-        elif initial_pts == "pcoa":
-            pcoa_ = pcoa(dissimilarity_mtx)
-            pcoa_pts = pcoa_['samples'].as_matrix()
-            pcoa_eigs = pcoa_['eigvals'].as_matrix()
+        if isinstance(initial_pts, str):
+            if initial_pts == "random":
 
-            #             # rename pcoa_eigs to not confuse things
-            #             order = pcoa_eigs
+                print('using random initial points.\n')
 
-            #             # no need for next line as its already ordered this way
-            # #             [::-1]  # pos to small/neg
-            #             pcoa_pts = pcoa_pts[order].T
-            #             self.points = pcoa_pts[:, :dimension]
-            self.points = pcoa_pts[:, :dimension]
+                self.points = self._get_initial_pts(dimension, point_range)
+
+                # print('[======================]')
+                # print('self.points (from random):\n')
+                # print(self.points)
+                # print('[======================]')
+                # print()
+
+            elif initial_pts == "pcoa":
+
+                print('using pcoa to generate initial points.\n')
+
+                pcoa_ = pcoa(dissimilarity_mtx)
+                pcoa_pts = pcoa_['samples'].as_matrix()
+                pcoa_eigs = pcoa_['eigvals'].as_matrix()
+
+                # no need for next lines as the pcoa_points are already formatted correctly.
+                #             [::-1]  # pos to small/neg
+                #             pcoa_pts = pcoa_pts[order].T
+
+                self.points = pcoa_pts[:, :dimension]
+
+                # print('[======================]')
+                # print('self.points (from pcoa):\n')
+                # print(self.points)
+                # print('[======================]')
+                # print()
+
         else:
+
+            print('using pre calculated points.\n')
+
+            # print('[======================]')
+            # print('intiial_pts:\n')
+            # print(initial_pts)
+            # print('[======================]')
+            #
+            # print('failing-0')
+
             self.points = initial_pts
+
+            # print('failing-1')
+
         self.points = self._center(self.points)
 
         self._rescale()
@@ -341,28 +373,31 @@ class NMDS(object):
         if self.optimization_method == 0:
             self._steep_descent_move()
 
-            # elif self.optimization_method == 1:
-            #     numrows, numcols = np.shape(self.points)
-            #     pts = self.points.ravel().copy()
-            #
-            #     # odd behavior of scipy_optimize, possibly a bug there
-            #     maxiter = 100
-            #     while True:
-            #         if maxiter <= 1:
-            #             raise RuntimeError("could not run scipy optimizer")
-            #         try:
-            #             optpts = optimize.fmin_bfgs(
-            #                 self._recalc_stress_from_pts, pts,
-            #                 fprime=self._calc_stress_gradients,
-            #                 disp=self.verbosity, maxiter=maxiter, gtol=1e-3)
-            #             break
-            #         except FloatingPointError:
-            #             # floor
-            #             maxiter = int(maxiter / 2)
-            #
-            #     self.points = optpts.reshape((numrows, numcols))
-            # else:
-            #     raise ValueError
+        elif self.optimization_method == 1:
+            numrows, numcols = np.shape(self.points)
+            pts = self.points.ravel().copy()
+
+            # odd behavior of scipy_optimize, possibly a bug there
+            maxiter = 100
+            while True:
+                if maxiter <= 1:
+                    raise RuntimeError("could not run scipy optimizer")
+                try:
+                    # using scipy.optmize module
+                    optpts = scipy_opt.fmin_bfgs(
+                        # using pycogents version of scipy.optomize module
+#                     optpts = scipy_opt_mod.fmin_bfgs(
+                        self._recalc_stress_from_pts, pts,
+                        fprime=self._calc_stress_gradients,
+                        disp=self.verbosity, maxiter=maxiter, gtol=1e-3)
+                    break
+                except FloatingPointError:
+                    # floor
+                    maxiter = int(maxiter / 2)
+
+            self.points = optpts.reshape((numrows, numcols))
+        else:
+            raise ValueError
 
     def _steep_descent_move(self,
                             rel_step_size=1. / 100, precision=.00001, max_iters=100):
@@ -427,7 +462,8 @@ class NMDS(object):
         pts here is a 1D numpy array"""
         pts = pts.reshape(self.points.shape)
 
-        changed = not all(pts == self.points)
+        changed = not np.all(pts == self.points)
+        #         changed = not np.array_equal(pts, self.points)
         self.points = pts
         if changed:
             self._calc_distances()
@@ -456,9 +492,28 @@ def metaNMDS(iters, *args, **kwargs):
     kwargs['initial_pts'] = "pcoa"
     res1 = NMDS(*args, **kwargs)
     results.append(res1)
+
+    #     print(res1.getPoints())
+
     kwargs['initial_pts'] = "random"
+    # kwargs['initial_pts'] = res1.getPoints()
+
+    print('STRESS from intial NMDS: ', res1.getStress())
+
     for i in range(iters):
         results.append(NMDS(*args, **kwargs))
     stresses = [nmds.getStress() for nmds in results]
     bestidx = stresses.index(min(stresses))
     return results[bestidx]
+
+
+if __name__ == '__main__':
+
+    dissim = pd.read_csv('subice_bray_dist.csv', index_col=0)
+    dissim_array = dissim.as_matrix()
+
+    # my_nmds = NMDS(dissim_array, verbosity=0)
+    my_nmds = metaNMDS(10, dissim_array, verbosity=0)
+
+    print()
+    print('### FINAL STRESS: ', my_nmds.getStress())

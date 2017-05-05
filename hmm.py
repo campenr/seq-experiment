@@ -60,8 +60,19 @@ seq_exp = SeqExp(feature_table, classification_table, sample_data_table)
 # print(seq_exp.classification_table)
 # print(seq_exp.sample_data_table)
 
-print(seq_exp)
+# print(seq_exp)
+#
+# relabund = seq_exp.relabund()
+#
+# print(relabund.feature_table)
 
-relabund = seq_exp.relabund()
+# print(seq_exp.sample_names)
+# print(seq_exp.feature_names)
 
-print(relabund.feature_table)
+from skbio import DistanceMatrix
+
+from skbio.diversity import beta_diversity
+
+# dist = pd.read_csv('subice_bray_dist.csv', index_col=0)
+# print(dist)
+

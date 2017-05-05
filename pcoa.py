@@ -19,12 +19,15 @@ def f_matrix(E_matrix):
     matrix_mean = E_matrix.mean()
     return E_matrix - row_means - col_means + matrix_mean
 
+
 from warnings import warn
 
 from scipy.linalg import eigh
 
 from skbio.stats.distance import DistanceMatrix
 from skbio.util._decorator import experimental
+
+
 # from ._ordination_results import OrdinationResults
 # from ._utils import e_matrix, f_matrix
 
@@ -80,6 +83,8 @@ def pcoa(distance_matrix):
        ignored.
     """
 
+    print('running pcoa.\n')
+
     E_matrix = e_matrix(distance_matrix)
 
     # If the used distance was euclidean, pairwise distances
@@ -110,7 +115,7 @@ def pcoa(distance_matrix):
             " {0} and the largest is {1}.".format(eigvals.min(),
                                                   eigvals.max()),
             RuntimeWarning
-            )
+        )
     idxs_descending = eigvals.argsort()[::-1]
     eigvals = eigvals[idxs_descending]
     eigvecs = eigvecs[:, idxs_descending]
@@ -144,18 +149,18 @@ def pcoa(distance_matrix):
         'proportion_explained': pd.Series(proportion_explained)
     }
 
-# if __name__ == '__main__':
+    # if __name__ == '__main__':
 
-#     dissim = pd.read_csv('subice_bray_dist.csv', index_col=0)
-#     dissim_array = dissim.as_matrix()
+    #     dissim = pd.read_csv('subice_bray_dist.csv', index_col=0)
+    #     dissim_array = dissim.as_matrix()
 
-#     # print(dissim_array)
+    #     # print(dissim_array)
 
-#     mds = pcoa(dissim_array)
+    #     mds = pcoa(dissim_array)
 
-#     # print(my_nmds.getPoints())
-#     # print(my_nmds.getStress())
+    #     # print(my_nmds.getPoints())
+    #     # print(my_nmds.getStress())
 
-#     print(mds['samples'])
+    #     print(mds['samples'])
 
-#     # pd.DataFrame(my_nmds.getPoints()).to_csv('nmds.axes.csv', header=False)
+    #     # pd.DataFrame(my_nmds.getPoints()).to_csv('nmds.axes.csv', header=False)
