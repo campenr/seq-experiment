@@ -1,5 +1,8 @@
 # Project dev files
 .idea/
 
+# virtual environment files
+venv/
+
 # pycache files
 __pycache__/
