@@ -159,15 +159,12 @@ def MDS(distance_matrix):
     }
 
 
-import pandas as pd
-
 """nonmetric multidimensional scaling (nmds)
 see, for example: Jan de Leeuw 2004 (monotone regression), 
 Rencher 2002: Methods of multivariate analysis, and the original work: 
 Kruskal 1964: Nonmetric multidimensional scaling
 """
-# from __future__ import division
-import numpy as np
+
 
 # from numpy import array, multiply, sum, zeros, size, shape, diag, dot, mean, \
 #     sqrt, transpose, trace, argsort, newaxis, finfo, all
@@ -175,8 +172,8 @@ import numpy as np
 # from numpy.linalg import norm, svd
 from operator import itemgetter
 # import cogent.maths.scipy_optimize as optimize
-from scipy import optimize as scipy_opt
-import scipy_optimize as scipy_opt_mod
+from scipy import optimize# as scipy_opt
+# import scipy_optimize as scipy_opt_mod
 
 # from cogent.cluster.metric_scaling import principal_coordinates_analysis
 
@@ -543,7 +540,7 @@ class NMDS(object):
                     raise RuntimeError("could not run scipy optimizer")
                 try:
                     # using scipy.optmize module
-                    optpts = scipy_opt.fmin_bfgs(
+                    optpts = optimize.fmin_bfgs(
                         # using pycogents version of scipy.optomize module
 #                     optpts = scipy_opt_mod.fmin_bfgs(
                         self._recalc_stress_from_pts, pts,

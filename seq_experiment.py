@@ -56,7 +56,7 @@ class SeqExp(object):
         # enforce correct type for classification_table
         if isinstance(value, SampleDataTable):
 
-            # check that classification_table matches the feature_table
+            # check that sample_data_table matches the feature_table
             if value.index.tolist() != self._feature_table.columns.values.tolist():
                 raise IndexError('sample_data_table index does not match the feature_table columns.')
             else:
@@ -132,6 +132,7 @@ class SeqExp(object):
 
         # conditional subsetting of classification_table depending on the subsetting items type
         if self.classification_table is not None:
+            # TODO need to also allow subsetting using a Series or DataFrame index, not just lists
             if isinstance(item, slice):
                 new_seq_exp.classification_table = self.classification_table[item]
             elif isinstance(item, pd.Series):
@@ -148,6 +149,7 @@ class SeqExp(object):
 
         # conditional subsetting of sample_data_table depending on the subsetting items type
         if self.sample_data_table is not None:
+            # TODO need to also allow subsetting using a Series or DataFrame index, not just lists
             if isinstance(item, list):
                 new_seq_exp.sample_data_table = self.sample_data_table.ix[item]
             elif isinstance(item, pd.Series):
@@ -195,9 +197,115 @@ class SeqExp(object):
 
         pass
 
-    def distance(self):
+    def drop(self, labels, from_='features'):
         """
+        Drop either features or samples from the SeqExp object.
         
+        :param labels: labels to drop from the SeqExp object
+        Ltype items: str or list(str)
+        :param from_: whether to drop the supplied labels from the features or samples
+        :type from_: str
+               
+        :return: a new SeqExp object
+         
+        ..note:: can specify either the label of a single feature/sample to drop, or a list of labels to drop.
+        ..seealso:: SeqExp.__getitem__()
+                 
+        """
+
+        # check for valid `from` argument
+        if from_ not in ['features', 'samples']:
+            raise(ValueError('from_ must be one either \'features\' or \'samples\'.'))
+
+        # create new SeqExp object with subset feature_table
+        new_feature_table = self.feature_table
+        if from_ == 'features':
+            new_feature_table = new_feature_table.drop(labels, axis=0)
+        elif from_ == 'samples':
+            new_feature_table = new_feature_table.drop(labels, axis=1)
+        new_seq_exp = SeqExp(new_feature_table)
+
+        # use the merge function to do the subsetting on the classification and sample data tables if they exist
+        if self.classification_table is not None:
+            new_seq_exp = new_seq_exp.merge(self.classification_table)
+        if self.sample_data_table is not None:
+            new_seq_exp = new_seq_exp.merge(self.sample_data_table)
+
+        return new_seq_exp
+
+    def merge(self, right):
+        """
+        Merges this SeqExp with another SeqExp or SeqExp component.
+        
+        Provides similar functionality to the pandas DataFrame.merge or phyloseq's merge_phyloseq.
+        
+        This method takes the input SeqExp or components thereof and returns the features, classifications, and sample
+        data that matches across all the supplied objects.
+        
+        :param right: SeqExp, FeatureTable, ClassificationTable, or SampleDataTable to merge with
+        :type right: SeqExp, FeatureTable, ClassificationTable, or SampleDataTable
+        
+        ..note:: can accept either another SeqExp object, or other feature_table, classification_table, or 
+        sample_data_table objects.
+        ..seealso:: to create a SeqExp record from only the component parts using the same process use 
+        `seq_experiment.concat`.
+        
+        :return: a new SeqExp object
+        
+        """
+
+        new_feature_table = self.feature_table
+
+        if isinstance(right, ClassificationTable):
+            try:
+                # get the intersection of this objects index and the supplied classification_table's index
+
+                new_index = self.feature_table.index.intersection(right.index)
+
+                # subset based on new index and use to return new SeqExp
+                new_feature_table = new_feature_table.ix[new_index]
+
+                # print(new_feature_table)
+
+                new_classificaiton_table = right.ix[new_index]
+
+                new_seq_experiment = SeqExp(new_feature_table, new_classificaiton_table, self.sample_data_table)
+                return new_seq_experiment
+
+            except Exception:
+                raise
+
+        elif isinstance(right, SampleDataTable):
+            try:
+
+                # print(self.feature_table.columns)
+                # print(right.index)
+
+                # get the intersection of this objects columns and the supplied sample_data_table's columns
+                new_columns = self.feature_table.columns.intersection(right.index)
+                # print('new_columsn: ', new_columns)
+
+                # subset based on new index and use to return new SeqExp
+                new_feature_table = new_feature_table[new_columns]
+
+                # print(new_feature_table)
+
+                new_sample_data_table = right.ix[new_columns]
+
+                new_seq_experiment = SeqExp(new_feature_table, self.classification_table, new_sample_data_table)
+                return new_seq_experiment
+
+            except Exception:
+                raise
+
+        elif isinstance(right, type(None)):
+            return self
+
+        else:
+            raise(ValueError('invalid type for \'right\' argument'))
+
+    def distance(self):
+        """      
         
         :return: 
         """
@@ -247,16 +355,18 @@ class SeqExp(object):
         # check for valid method
         if method in ord_methods:
 
-            if has_distance:
-                # perform ordination with specified method, passing additional arguments to the ordination functions
-                ord_methods[method](dissimilarity_mtx=distance, *args, *kwargs)
-
-            else:
+            if not has_distance:
                 if metric in dist_metrics:
                     # need to transpose feature table to get it in the correct orientation for pdist
-                    dist = squareform(pdist(self.feature_table.transpose(), metric=metric))
+                    distance = squareform(pdist(self.feature_table.transpose(), metric=metric))
+                else:
+                    raise(ValueError('must supply a valid metric for calculating distances/dissimilarities.'))
 
-        pass
+                # perform ordination with specified method, passing additional arguments to the ordination functions
+                ord = ord_methods[method](dissimilarity_mtx=distance, *args, *kwargs)
+                return ord
+        else:
+            raise(ValueError('must supply a valid ordination method.'))
 
     def plot_bar(self, **kwargs):
         """Plots bar chart using matplotlib."""

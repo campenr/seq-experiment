@@ -46,7 +46,23 @@ classification_table = ClassificationTable(test_classification_table)
 sample_data_table = SampleDataTable(test_sample_data_table)
 # print(feature_table)
 
-seq_exp = SeqExp(feature_table, classification_table, sample_data_table)
+# seq_exp = SeqExp(feature_table, classification_table, sample_data_table)
+print('\nmaking')
+seq_exp = SeqExp(feature_table, sample_data_table=sample_data_table)
+print(seq_exp)
+
+print('\nmerging')
+seq_exp = seq_exp.merge(classification_table)
+print(seq_exp)
+
+print('\ndropping')
+seq_exp = seq_exp.drop('feature_0')
+print(seq_exp)
+
+print('\ndropping')
+seq_exp = seq_exp.drop('class_7', from_='samples')
+print(seq_exp.feature_table)
+
 # print('initial:')
 # print(seq_exp)
 # print()
