@@ -61,7 +61,7 @@ print(seq_exp)
 
 print('\ndropping')
 seq_exp = seq_exp.drop('class_7', from_='samples')
-print(seq_exp.feature_table)
+print(seq_exp)
 
 # print('initial:')
 # print(seq_exp)
@@ -85,9 +85,9 @@ print(seq_exp.feature_table)
 # print(seq_exp.sample_names)
 # print(seq_exp.feature_names)
 
-from skbio import DistanceMatrix
+# from skbio import DistanceMatrix
 
-from skbio.diversity import beta_diversity
+# from skbio.diversity import beta_diversity
 
 # dist = pd.read_csv('subice_bray_dist.csv', index_col=0)
 # print(dist)

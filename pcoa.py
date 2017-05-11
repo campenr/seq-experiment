@@ -24,8 +24,8 @@ from warnings import warn
 
 from scipy.linalg import eigh
 
-from skbio.stats.distance import DistanceMatrix
-from skbio.util._decorator import experimental
+# from skbio.stats.distance import DistanceMatrix
+# from skbio.util._decorator import experimental
 
 
 # from ._ordination_results import OrdinationResults
