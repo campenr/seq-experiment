@@ -4,7 +4,7 @@ import matplotlib.pyplot as plt
 from matplotlib.cm import get_cmap
 from matplotlib.colors import LinearSegmentedColormap
 
-from ordination import MDS, NMDS
+from ordination import pcoa, nmds, meta_nmds
 from scipy.spatial.distance import pdist, squareform
 
 class SeqExp(object):
@@ -337,8 +337,8 @@ class SeqExp(object):
         """
 
         ord_methods = {
-            'MDS': MDS,
-            'NMDS': NMDS
+            'pcoa': pcoa,
+            'nmds': meta_nmds
         }
         dist_metrics = ['braycurtis']
 
@@ -370,16 +370,6 @@ class SeqExp(object):
 
     def plot_bar(self, **kwargs):
         """Plots bar chart using matplotlib."""
-
-        # # try importing seaborn to make prettier graphs
-        # try:
-        #     import seaborn as sns
-        #
-        # except ImportError:
-        #     pass
-
-        # make pretty
-        plt.style.use('seaborn-white')
 
         # create custom cmap
         paired_cmap = get_cmap('Paired')

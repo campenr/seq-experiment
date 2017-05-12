@@ -1,4 +1,4 @@
-from ordination._MDS import MDS as MDS
-from ordination._MDS import NMDS as NMDS
-from ordination._MDS import metaNMDS as metaNMDS
+from ordination._pcoa import pcoa as pcoa
+from ordination._nmds import NMDS as nmds
+from ordination._nmds import metaNMDS as meta_nmds
 

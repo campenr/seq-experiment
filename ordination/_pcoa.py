@@ -1,5 +1,21 @@
+"""
+Functions for performing principal coordinates analysis (PCoA). These functions are originally from the scikit-bio 
+package, and are reproduced here with modifications for the following reason(s):
+
+* scikit-bio does not play well with Windows, but seq-experiment should, so isolating this scikit-bio functionality
+ allows us to make use of it without abandoning support for an entire operating system
+* I do not wish to depend upon scikit-bio's various wrapper classes i.e. DistanceMatrix, OrdinationResult.
+
+The intended input for the pcoa function is a distance matrix/dissimilarity matrix as a numpy array like object.
+
+For original license information see `licenses/scikit-bio.txt`.
+
+"""
+
 import numpy as np
 import pandas as pd
+from warnings import warn
+from scipy.linalg import eigh
 
 
 def e_matrix(distance_matrix):
@@ -19,18 +35,6 @@ def f_matrix(E_matrix):
     matrix_mean = E_matrix.mean()
     return E_matrix - row_means - col_means + matrix_mean
 
-
-from warnings import warn
-
-from scipy.linalg import eigh
-
-# from skbio.stats.distance import DistanceMatrix
-# from skbio.util._decorator import experimental
-
-
-# from ._ordination_results import OrdinationResults
-# from ._utils import e_matrix, f_matrix
-
 # - In cogent, after computing eigenvalues/vectors, the imaginary part
 #   is dropped, if any. We know for a fact that the eigenvalues are
 #   real, so that's not necessary, but eigenvectors can in principle
@@ -40,7 +44,6 @@ from scipy.linalg import eigh
 #   so, so I'm not doing that.
 
 
-@experimental(as_of="0.4.0")
 def pcoa(distance_matrix):
     r"""Perform Principal Coordinate Analysis.
     Principal Coordinate Analysis (PCoA) is a method similar to PCA
@@ -82,8 +85,6 @@ def pcoa(distance_matrix):
        appear, allowing the user to decide if they can be safely
        ignored.
     """
-
-    print('running pcoa.\n')
 
     E_matrix = e_matrix(distance_matrix)
 
@@ -141,6 +142,7 @@ def pcoa(distance_matrix):
 
     axis_labels = ['PC%d' % i for i in range(1, eigvals.size + 1)]
 
+    # TODO change this to return a custom ordination results object
     return {
         'short_method_name': 'PCoA',
         'long_method_name': 'Principal Coordinate Analysis',
@@ -149,18 +151,3 @@ def pcoa(distance_matrix):
         'proportion_explained': pd.Series(proportion_explained)
     }
 
-    # if __name__ == '__main__':
-
-    #     dissim = pd.read_csv('subice_bray_dist.csv', index_col=0)
-    #     dissim_array = dissim.as_matrix()
-
-    #     # print(dissim_array)
-
-    #     mds = pcoa(dissim_array)
-
-    #     # print(my_nmds.getPoints())
-    #     # print(my_nmds.getStress())
-
-    #     print(mds['samples'])
-
-    #     # pd.DataFrame(my_nmds.getPoints()).to_csv('nmds.axes.csv', header=False)
