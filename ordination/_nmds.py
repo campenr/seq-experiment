@@ -20,9 +20,11 @@ Kruskal 1964: Nonmetric multidimensional scaling
 """
 
 import numpy as np
+import pandas as pd
 from operator import itemgetter
 from scipy import optimize
-from ._pcoa import pcoa
+from ordination import pcoa
+from ordination._ordination_result import OrdinationResult
 
 __author__ = "Justin Kuczynski"
 __copyright__ = "Copyright 2007-2016, The Cogent Project"
@@ -67,8 +69,8 @@ class NMDS(object):
     Note: increasing MIN_ABS_STRESS causes nans to return from stress fn
     """
 
-    def __init__(self, dissimilarity_mtx, initial_pts="random",
-                 dimension=2, rand_seed=None, optimization_method=1, verbosity=1,
+    def __init__(self, d_matrix, initial_pts="random",
+                 dimension=2, rand_seed=None, optimization_method=1, verbosity=0,
                  max_iterations=50, setup_only=False, min_rel_improvement=1e-3,
                  min_abs_stress=1e-5):
         """    
@@ -84,6 +86,9 @@ class NMDS(object):
         0 => justin k's ad hoc method of steepest descent
         1 => cogent's scipy_optimize fmin_bfgs
         """
+
+        dissimilarity_mtx = d_matrix.values
+
         self.min_rel_improvement = min_rel_improvement
         self.min_abs_stress = min_abs_stress
 
@@ -112,9 +117,11 @@ class NMDS(object):
                 self.points = self._get_initial_pts(dimension, point_range)
 
             elif initial_pts == "pcoa":
-                pcoa_ = pcoa(dissimilarity_mtx)
-                pcoa_pts = pcoa_['samples'].as_matrix()
-                pcoa_eigs = pcoa_['eigvals'].as_matrix()
+                # pass original d_matrix object to pcoa, not just the values
+                # NOTE: we can supress warnings about negative eigvals as we're only using pcoa to get intial points
+                pcoa_ = pcoa(d_matrix, supress_warning=True)
+                pcoa_pts = pcoa_.axes.values
+                pcoa_eigs = pcoa_.eigvals.values
                 self.points = pcoa_pts[:, :dimension]
 
         else:
@@ -185,7 +192,7 @@ class NMDS(object):
         return [self._dists[i, j] for (i, j) in self.order]
 
     def getPoints(self):
-        """Returns (ordered in a list) the n points in k space 
+        """Returns (ordered in a list) the n points in k space
 
         these are the algorithm's attempt at points corresponding to the input
         order of dissimilarities.  Returns a numpy 'd' mtx, points in rows
@@ -204,8 +211,8 @@ class NMDS(object):
     def _center(self, mtx):
         """translate all data (rows of the matrix) to center on the origin
 
-        returns a shifted version of the input data.  The new matrix is such 
-        that the center of mass of the row vectors is centered at the origin.  
+        returns a shifted version of the input data.  The new matrix is such
+        that the center of mass of the row vectors is centered at the origin.
         Returns a numpy float ('d') array
         """
         result = np.array(mtx, 'd')
@@ -218,7 +225,7 @@ class NMDS(object):
 
         First creates a list of dissim elements with structure [i, j, value],
         then sorts that by value and strips the value subelemnt.
-        i and j correspond to the row and column of the input dissim matrix 
+        i and j correspond to the row and column of the input dissim matrix
         """
 
         dissim_list = []
@@ -259,11 +266,11 @@ class NMDS(object):
     def _do_monotone_regression(self, dhats):
         """Performs a monotone regression on dhats, returning the result
 
-        Assuming the input dhats are the values of the pairwise point 
+        Assuming the input dhats are the values of the pairwise point
         distances, this algorithm minimizes the stress while enforcing
         monotonicity of the dhats.
         Jan de Leeuw 2004 (monotone regression) has a rough outline of the
-        algorithm.  Basically, as we proceed along the ordered list, 
+        algorithm.  Basically, as we proceed along the ordered list,
         if an element is smaller than its preceeding one, the two are averaged
         and grouped together in a block.  The process is repeated until
         the blocks are monotonic, that is block i <= block i+1.
@@ -319,9 +326,9 @@ class NMDS(object):
         self.points = self.points / factor
 
     def _move_points(self):
-        """ this attempts to move our points in such a manner as to minimize 
-        the stress metric, keeping dhats fixed.  If the dists could be chosen 
-        without constraints, by assigning each dist[i,j] = dhat[i,j], 
+        """ this attempts to move our points in such a manner as to minimize
+        the stress metric, keeping dhats fixed.  If the dists could be chosen
+        without constraints, by assigning each dist[i,j] = dhat[i,j],
         stress would be zero.
         However, since the distances are computed from points, it is generally
         impossible to change the dists independantly of each other.
@@ -330,7 +337,7 @@ class NMDS(object):
         - move points
         - recompute dists
         - recompute stress
-        - if stress decreased, continue in the same manner, otherwise 
+        - if stress decreased, continue in the same manner, otherwise
         move points in a different manner
 
         self.points often serves as a starting point for optimizaion algorithms
@@ -377,10 +384,10 @@ class NMDS(object):
         a few simple cases, and aren't optimized.
 
         The gradient is calculated discretely, not via formula.  Each variable
-        (there are n points * k dimensions of variables), is adjusted, 
+        (there are n points * k dimensions of variables), is adjusted,
         the stress measured, and the variable returned to its prior value.
 
-        If a local minimum is larger than step_size, the algorithm cannot 
+        If a local minimum is larger than step_size, the algorithm cannot
         escape.
         """
         num_rows, num_cols = np.shape(self.points)
@@ -449,6 +456,21 @@ class NMDS(object):
         return grad
 
 
+def run_nmds(d_matrix, *args, **kwargs):
+    """wrapper function for running NMDS."""
+
+    nmds = NMDS(d_matrix, *args, **kwargs)
+    axis_labels = ['NMDS%d' % i for i in range(1, nmds.dimension + 1)]
+
+    ord_result = OrdinationResult(
+        method='nmds',
+        axes=pd.DataFrame(nmds.getPoints(), columns=axis_labels, index=d_matrix.index),
+        stress=nmds.getStress()
+    )
+
+    return ord_result
+
+
 def metaNMDS(iters=3, *args, **kwargs):
     """ runs NMDS, first with pcoa init, then iters times with random init
     returns NMDS object with lowest stress
@@ -457,18 +479,12 @@ def metaNMDS(iters=3, *args, **kwargs):
     """
     results = []
     kwargs['initial_pts'] = "pcoa"
-    res1 = NMDS(*args, **kwargs)
+    res1 = run_nmds(*args, **kwargs)
     results.append(res1)
 
-    #     print(res1.getPoints())
-
     kwargs['initial_pts'] = "random"
-    # kwargs['initial_pts'] = res1.getPoints()
-
-    print('STRESS from intial NMDS: ', res1.getStress())
-
     for i in range(iters):
-        results.append(NMDS(*args, **kwargs))
-    stresses = [nmds.getStress() for nmds in results]
+        results.append(run_nmds(*args, **kwargs))
+    stresses = [nmds.stress for nmds in results]
     bestidx = stresses.index(min(stresses))
     return results[bestidx]

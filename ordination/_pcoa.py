@@ -4,7 +4,7 @@ package, and are reproduced here with modifications for the following reason(s):
 
 * scikit-bio does not play well with Windows, but seq-experiment should, so isolating this scikit-bio functionality
  allows us to make use of it without abandoning support for an entire operating system
-* I do not wish to depend upon scikit-bio's various wrapper classes i.e. DistanceMatrix, OrdinationResult.
+* I do not wish to depend upon scikit-bio's various wrapper classes i.e. DistanceMatrix, OrdinationResults.
 
 The intended input for the pcoa function is a distance matrix/dissimilarity matrix as a numpy array like object.
 
@@ -16,6 +16,8 @@ import numpy as np
 import pandas as pd
 from warnings import warn
 from scipy.linalg import eigh
+from ordination._ordination_result import OrdinationResult
+# from ordination._utils import d_matrix_required
 
 
 def e_matrix(distance_matrix):
@@ -44,7 +46,7 @@ def f_matrix(E_matrix):
 #   so, so I'm not doing that.
 
 
-def pcoa(distance_matrix):
+def pcoa(d_matrix, supress_warning=False):
     r"""Perform Principal Coordinate Analysis.
     Principal Coordinate Analysis (PCoA) is a method similar to PCA
     that works from distance matrices, and so it can be used with
@@ -86,7 +88,7 @@ def pcoa(distance_matrix):
        ignored.
     """
 
-    E_matrix = e_matrix(distance_matrix)
+    E_matrix = e_matrix(d_matrix.values)
 
     # If the used distance was euclidean, pairwise distances
     # needn't be computed from the data table Y because F_matrix =
@@ -105,7 +107,7 @@ def pcoa(distance_matrix):
     # in that case. First, we make values close to 0 equal to 0.
     negative_close_to_zero = np.isclose(eigvals, 0)
     eigvals[negative_close_to_zero] = 0
-    if np.any(eigvals < 0):
+    if np.any(eigvals < 0) and not supress_warning:
         warn(
             "The result contains negative eigenvalues."
             " Please compare their magnitude with the magnitude of some"
@@ -143,11 +145,12 @@ def pcoa(distance_matrix):
     axis_labels = ['PC%d' % i for i in range(1, eigvals.size + 1)]
 
     # TODO change this to return a custom ordination results object
-    return {
-        'short_method_name': 'PCoA',
-        'long_method_name': 'Principal Coordinate Analysis',
-        'eigvals': pd.Series(eigvals),
-        'samples': pd.DataFrame(coordinates),
-        'proportion_explained': pd.Series(proportion_explained)
-    }
 
+    ord_result = OrdinationResult(
+        method='PCoA',
+        axes=pd.DataFrame(coordinates, columns=axis_labels, index=d_matrix.index),
+        eigvals=pd.Series(eigvals, index=axis_labels),
+        explained=pd.Series(proportion_explained, index=axis_labels)
+    )
+
+    return ord_result

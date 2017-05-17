@@ -5,6 +5,7 @@ from matplotlib.cm import get_cmap
 from matplotlib.colors import LinearSegmentedColormap
 
 from ordination import pcoa, nmds, meta_nmds
+from distance import DistanceMatrix
 from scipy.spatial.distance import pdist, squareform
 
 class SeqExp(object):
@@ -304,13 +305,26 @@ class SeqExp(object):
         else:
             raise(ValueError('invalid type for \'right\' argument'))
 
-    def distance(self):
+    def distance(self, metric='braycurtis'):
         """      
         
         :return: 
         """
 
-        pass
+        dist_metrics = ['braycurtis']
+
+        if metric in dist_metrics:
+            distance = squareform(pdist(self.feature_table.transpose(), metric=metric))
+        else:
+            raise(ValueError('must supply a valid distance or dissimilarity metric.'))
+
+        # format results in pd.DataFrame
+        dist_df = pd.DataFrame(distance)
+        dist_df.index = self.sample_names
+        dist_df.columns = self.sample_names
+
+        # return as DistanceMatrix object
+        return DistanceMatrix(dist_df, metric=metric)
 
 
     def ordinate(self, method, distance=None, metric=None, *args, **kwargs):
