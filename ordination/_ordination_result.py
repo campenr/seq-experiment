@@ -106,7 +106,7 @@ class OrdinationResult(object):
 
         # setup plotting area and colors
         colors, leg_colors = tee(iter(getattr(cm, kwargs['cmap'])(np.linspace(0, 1, len(groups)))), 2)
-        _, ax = plt.subplots(kwargs['figsize'])
+        _, ax = plt.subplots(figsize=kwargs['figsize'])
 
         # add data to plot
         for sub_df in sub_dfs:
