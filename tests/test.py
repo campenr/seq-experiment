@@ -4,7 +4,7 @@ import pandas as pd
 
 from scipy.spatial.distance import squareform, pdist
 
-from seq_experiment import SeqExp, FeatureTable, ClassificationTable, SampleDataTable
+from core import SeqExp, FeatureTable, ClassificationTable, MetadataTable
 
 
 class Test(unittest.TestCase):
@@ -44,7 +44,7 @@ class Test(unittest.TestCase):
             )
         )
 
-        self.test_sample_data_table = SampleDataTable(
+        self.test_metadata_table = MetadataTable(
             pd.DataFrame(
                 np.random.randint(low=0, high=100, size=(class_count, sample_data_count)),
                 index=classes,
@@ -80,7 +80,7 @@ class Test(unittest.TestCase):
         try:
             SeqExp(
                 feature_table=self.test_feature_table,
-                sample_data_table=self.test_sample_data_table
+                metadata_table=self.test_metadata_table
             )
         except TypeError:
             self.fail('SeqExp creation raised TypeError unexpectedly')
@@ -92,7 +92,7 @@ class Test(unittest.TestCase):
             SeqExp(
                 feature_table=self.test_feature_table,
                 classification_table=self.test_classification_table,
-                sample_data_table=self.test_sample_data_table
+                metadata_table=self.test_metadata_table
             )
         except TypeError:
             self.fail('SeqExp creation raised TypeError unexpectedly')
@@ -124,7 +124,7 @@ class Test(unittest.TestCase):
             with self.assertRaises(TypeError):
                 SeqExp(
                     feature_table=self.test_feature_table,
-                    sample_data_table=type_
+                    metadata_table=type_
                 )
 
     def test_subset_SeqExp(self):
@@ -134,7 +134,7 @@ class Test(unittest.TestCase):
             seq_exp = SeqExp(
                 feature_table=self.test_feature_table,
                 classification_table=self.test_classification_table,
-                sample_data_table=self.test_sample_data_table
+                metadata_table=self.test_metadata_table
             )
             seq_exp = seq_exp[['class_1', 'class_2']]
 
@@ -146,12 +146,12 @@ class Test(unittest.TestCase):
         seq_exp = SeqExp(
             feature_table=self.test_feature_table,
             classification_table=self.test_classification_table,
-            sample_data_table=self.test_sample_data_table
+            metadata_table=self.test_metadata_table
         )
 
         try:
             dist = squareform(pdist(seq_exp.feature_table.transpose(), metric='braycurtis'))
-            ord = seq_exp.ordinate(method='NMDS', distance=dist)#, verbosity=0)
+            ord = seq_exp.ordinate(method='nmds', distance=dist)
         except Exception as e:
             self.fail(e)
 

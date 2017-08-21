@@ -1,7 +1,7 @@
 import numpy as np
 import pandas as pd
 
-from seq_experiment import SeqExp, FeatureTable, ClassificationTable, SampleDataTable
+from core import SeqExp, FeatureTable, ClassificationTable, SampleDataTable
 
 # set random seed
 np.random.seed(123)
@@ -107,10 +107,10 @@ seq_exp.sample_data_table['sample_data_3'] = [
 
 # print(seq_exp.sample_data_table)
 
-seq_exp_bray = seq_exp.distance(metric='braycurtis')
-# print(seq_exp_bray)
-
-seq_exp_bray_ord = seq_exp_bray.ordinate()
-# print(seq_exp_bray_ord)
-
-seq_exp_bray_ord.plot(seq_exp=seq_exp, color='sample_data_3')
+# seq_exp_bray = seq_exp.distance(metric='braycurtis')
+# # print(seq_exp_bray)
+#
+# seq_exp_bray_ord = seq_exp_bray.ordinate()
+# # print(seq_exp_bray_ord)
+#
+# seq_exp_bray_ord.plot(seq_exp=seq_exp, color='sample_data_3')
