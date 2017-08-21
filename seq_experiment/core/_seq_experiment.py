@@ -16,7 +16,7 @@ class SeqExp(object):
     """
     Main sequence experiment object.
 
-    Container for the separate feature_table, classification_table, and sample_data_table records.
+    Container for the separate feature_table, classification_table, and metadata_table records.
 
     """
 
@@ -70,7 +70,7 @@ class SeqExp(object):
         elif value is None:
             self._metadata_table = None
         else:
-            raise (TypeError('sample_data_table should be of type SampleDataTable or None'))
+            raise (TypeError('metadata_table should be of type MetadataTable or None'))
 
     @property
     def sample_names(self):
@@ -104,7 +104,7 @@ class SeqExp(object):
         if self._metadata_table is not None:
             metadata_summary = 'metadata_table:\t{classes} classes x {metadata} sample data'.format(
                 classes=len(self._metadata_table.index),
-                sample_data=len(self._metadata_table.columns)
+                metadata=len(self._metadata_table.columns)
             )
         else:
             metadata_summary = None
@@ -152,22 +152,22 @@ class SeqExp(object):
             else:
                 new_seq_exp.classification_table = self.classification_table
 
-        # conditional subsetting of sample_data_table depending on the subsetting items type
+        # conditional subsetting of metadata_table depending on the subsetting items type
         if self.metadata_table is not None:
             # TODO need to also allow subsetting using a Series or DataFrame index, not just lists
             if isinstance(item, list):
-                new_seq_exp.sample_data_table = self.metadata_table.loc[item]
+                new_seq_exp.metadata_table = self.metadata_table.loc[item]
             elif isinstance(item, pd.Series):
-                # only subset the sample_data_table if the index's match
+                # only subset the metadata_table if the index's match
                 # TODO: this is hacky. Would be safer to overide some of the pd.DataFrame methods / operators
                 if self.metadata_table.index.tolist() == item.index.tolist():
-                    # print('will trim sample_data_table')
-                    new_seq_exp.sample_data_table = self.metadata_table[item]
+                    # print('will trim metadata_table')
+                    new_seq_exp.metadata_table = self.metadata_table[item]
                 else:
-                    # print('wont trim sample_data_table')
-                    new_seq_exp.sample_data_table = self.metadata_table
+                    # print('wont trim metadata_table')
+                    new_seq_exp.metadata_table = self.metadata_table
             else:
-                new_seq_exp.sample_data_table = self.metadata_table
+                new_seq_exp.metadata_table = self.metadata_table
 
         return new_seq_exp
 
@@ -260,7 +260,7 @@ class SeqExp(object):
         new_sxp = new_sxp.merge(new_classification_table)
 
         if self.metadata_table is not None:
-            new_sxp.sample_data_table = self.metadata_table
+            new_sxp.metadata_table = self.metadata_table
 
         new_sxp.label = level
 
@@ -314,8 +314,8 @@ class SeqExp(object):
     #     # use the merge function to do the subsetting on the classification and sample data tables if they exist
     #     if self.classification_table is not None:
     #         new_seq_exp = new_seq_exp.merge(self.classification_table)
-    #     if self.sample_data_table is not None:
-    #         new_seq_exp = new_seq_exp.merge(self.sample_data_table)
+    #     if self.metadata_table is not None:
+    #         new_seq_exp = new_seq_exp.merge(self.metadata_table)
     #
     #     return new_seq_exp
 
@@ -332,8 +332,8 @@ class SeqExp(object):
         :type right: SeqExp, FeatureTable, ClassificationTable, or SampleDataTable
         
         ..note:: can accept either another SeqExp object, or other feature_table, classification_table, or 
-        sample_data_table objects.
-        ..seealso:: to create a SeqExp record from only the component parts using the same process use 
+        metadata_table objects.
+        ..seealso:: to create a SeqExp record from only the component parts using the same process use
         `seq_experiment.concat`.
         
         :return: a new SeqExp object
@@ -367,7 +367,7 @@ class SeqExp(object):
                 # print(self.feature_table.columns)
                 # print(right.index)
 
-                # get the intersection of this objects columns and the supplied sample_data_table's columns
+                # get the intersection of this objects columns and the supplied metadata_table's columns
                 new_columns = self.feature_table.columns.intersection(right.index)
                 # print('new_columsn: ', new_columns)
 
@@ -521,7 +521,7 @@ class SeqExp(object):
 
         if mothur_constaxonomy_file is not None:
             classification_data = ClassificationTable.read_mothur_constaxonomy_file(mothur_constaxonomy_file)
-            sxp.merge(classification_data)
+            sxp = sxp.merge(classification_data)
 
         return sxp
 
