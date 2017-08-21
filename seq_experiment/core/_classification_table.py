@@ -31,3 +31,12 @@ class ClassificationTable(pd.DataFrame):
         classification_data = classification_data.set_index('OTU')
 
         return ClassificationTable(classification_data)
+
+    def tidy_mothur_classifications(self):
+        """Renoves the reported classification percentage agreements that Mothur appends to the classificaitons."""
+
+        new_classification_data = self.copy(deep=True)
+        for column in self:
+            new_classification_data[column] = new_classification_data[column].str.rsplit('(', 1, expand=True)[0]
+
+        return new_classification_data
