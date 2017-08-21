@@ -6,11 +6,11 @@ from matplotlib.colors import LinearSegmentedColormap
 
 from collections import OrderedDict
 
-from ordination import pcoa, nmds, meta_nmds
-from distance import DistanceMatrix
+from seq_experiment.ordination import pcoa, nmds, meta_nmds
+from seq_experiment.distance import DistanceMatrix
 from scipy.spatial.distance import pdist, squareform
 
-from core import FeatureTable, ClassificationTable, MetadataTable
+from seq_experiment.core import FeatureTable, ClassificationTable, MetadataTable
 
 class SeqExp(object):
     """

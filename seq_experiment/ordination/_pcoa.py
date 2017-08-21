@@ -16,7 +16,7 @@ import numpy as np
 import pandas as pd
 from warnings import warn
 from scipy.linalg import eigh
-from ordination._ordination_result import OrdinationResult
+from seq_experiment.ordination._ordination_result import OrdinationResult
 # from ordination._utils import d_matrix_required
 
 

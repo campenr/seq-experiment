@@ -4,7 +4,7 @@ import pandas as pd
 
 from scipy.spatial.distance import squareform, pdist
 
-from core import SeqExp, FeatureTable, ClassificationTable, MetadataTable
+from seq_experiment import SeqExp, FeatureTable, ClassificationTable, MetadataTable
 
 
 class Test(unittest.TestCase):

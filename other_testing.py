@@ -1,7 +1,7 @@
 import numpy as np
 import pandas as pd
 
-from core import SeqExp, FeatureTable, ClassificationTable, SampleDataTable
+from seq_experiment.core import SeqExp, FeatureTable, ClassificationTable, SampleDataTable
 
 # set random seed
 np.random.seed(123)

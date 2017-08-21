@@ -1,4 +1,4 @@
-from distance import DistanceMatrix
+from seq_experiment.distance import DistanceMatrix
 
 
 def d_matrix_required(f):

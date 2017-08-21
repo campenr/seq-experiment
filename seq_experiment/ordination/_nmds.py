@@ -23,8 +23,8 @@ import numpy as np
 import pandas as pd
 from operator import itemgetter
 from scipy import optimize
-from ordination import pcoa
-from ordination._ordination_result import OrdinationResult
+from seq_experiment.ordination import pcoa
+from seq_experiment.ordination._ordination_result import OrdinationResult
 
 __author__ = "Justin Kuczynski"
 __copyright__ = "Copyright 2007-2016, The Cogent Project"

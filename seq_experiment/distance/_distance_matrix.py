@@ -1,4 +1,4 @@
-from ordination import pcoa, nmds, meta_nmds
+from seq_experiment.ordination import pcoa, nmds, meta_nmds
 import pandas as pd
 # from ordination import OrdinationResult
 
