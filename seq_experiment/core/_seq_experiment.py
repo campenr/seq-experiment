@@ -266,7 +266,7 @@ class SeqExp(object):
 
         return new_sxp
 
-    def grouby_metadata(self, data_label):
+    def groupby_metadata(self, data_label):
         """Groups samples according to their metadata."""
 
         label_set = set(self.metadata_table[data_label])
