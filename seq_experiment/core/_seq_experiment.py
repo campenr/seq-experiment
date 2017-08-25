@@ -266,8 +266,8 @@ class SeqExp(object):
 
         return new_sxp
 
-    def groupby_metadata(self, data_label):
-        """Groups samples according to their metadata."""
+    def groupby_metadata(self, data_label, func):
+        """Groups samples according to their metadata using the specified function."""
 
         label_set = set(self.metadata_table[data_label])
 
@@ -275,7 +275,7 @@ class SeqExp(object):
         for label in label_set:
             classes = (self.metadata_table[self.metadata_table[data_label] == label]).index
             features = self.feature_table[classes]
-            feature_means = features.mean(axis=1)
+            feature_means = features.apply(func, axis=1)
 
             new_feats_dict[label] = feature_means
 
