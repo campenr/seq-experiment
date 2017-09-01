@@ -195,6 +195,10 @@ class SeqExp(object):
     def subset_samples(self, sample_names):
 
         new_feature_table = self.feature_table.loc[:, sample_names]
+
+        # can drop any features that now have zero abundance across all remaining samples
+        new_feature_table = new_feature_table[new_feature_table.max(axis=1) > 0]
+        
         new_sxp = SeqExp(feature_table=new_feature_table)
         if self.classification_table is not None:
             new_sxp = new_sxp.merge(self.classification_table)
