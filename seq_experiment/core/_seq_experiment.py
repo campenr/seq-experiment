@@ -12,99 +12,80 @@ from scipy.spatial.distance import pdist, squareform
 
 from seq_experiment.core import FeatureTable, ClassificationTable, MetadataTable
 
+
 class SeqExp(object):
     """
     Main sequence experiment object.
 
-    Container for the separate feature_table, classification_table, and metadata_table records.
+    Container for the separate data frames containing the matching features, classifications, and metadata records.
 
     """
 
-    def __init__(self, feature_table, classification_table=None, metadata_table=None):
+    def __init__(self, features, classifications=None, metadata=None):
 
-        self.set_feature_table(feature_table)
-        self.set_classification_table(classification_table)
-        self.set_metadata_table(metadata_table)
+        self._classifications = None
+        self._metadata = None
 
-    def get_feature_table(self):
-        return self._feature_table
+        self.features = features
+        self.classifications = classifications
+        self.metadata = metadata
 
-    def set_feature_table(self, value):
-        # enforce correct type for feature_table
-        if isinstance(value, FeatureTable):
-            self._feature_table = value
-        else:
-            raise(TypeError('feature_table should be of type FeatureTable'))
+    @property
+    def classifications(self):
+        return self._classifications
 
-    def get_classification_table(self):
-        return self._classification_table
+    @classifications.setter
+    def classifications(self, classifications):
+        """Checks that the classification data matches the existing feature data."""
 
-    def set_classification_table(self, value):
-        # enforce correct type for classification_table
-        if isinstance(value, ClassificationTable):
-
-            # check that classification_table matches the feature_table
-            if value.index.tolist() != self._feature_table.index.tolist():
+        if classifications is not None:
+            if classifications.index.tolist() != self.features.index.tolist():
                 raise IndexError('classification_table index does not match the feature_table index.')
-            else:
-                self._classification_table = value
 
-        elif value is None:
-            self._classification_table = None
-        else:
-            raise(TypeError('classification_table should be of type ClassificationTable or None'))
+        self._classifications = classifications
 
-    def get_metadata_table(self):
-        return self._metadata_table
+    @property
+    def metadata(self):
+        return self._metadata
 
-    def set_metadata_table(self, value):
-        # enforce correct type for metadata_table
-        if isinstance(value, MetadataTable):
+    @metadata.setter
+    def metadata(self, metadata):
+        """Checks that the metadata matches the existing feature data."""
 
-            # check that metadata_table matches the feature_table
-            if value.index.tolist() != self._feature_table.columns.values.tolist():
-                raise IndexError('metadata_table index does not match the feature_table columns.')
-            else:
-                self._metadata_table = value
+        if metadata is not None:
+            if metadata.index.tolist() != self.features.columns.values.tolist():
+                raise IndexError('classification_table index does not match the feature_table index.')
 
-        elif value is None:
-            self._metadata_table = None
-        else:
-            raise (TypeError('metadata_table should be of type MetadataTable or None'))
+        self._metadata = metadata
 
     @property
     def sample_names(self):
-        return self.feature_table.columns.tolist()
+        return self.features.columns.tolist()
 
     @property
     def feature_names(self):
-        return self.feature_table.index.tolist()
-
-    # configure properties
-    feature_table = property(fget=get_feature_table, fset=set_feature_table)
-    classification_table = property(fget=get_classification_table, fset=set_classification_table)
-    metadata_table = property(fget=get_metadata_table, fset=set_metadata_table)
+        return self.features.index.tolist()
 
     def __str__(self):
         """."""
 
-        feature_summary = 'feature_table:\t{features} features x {classes} classes'.format(
-            features=len(self._feature_table.index),
-            classes=len(self._feature_table.columns)
+        feature_summary = 'features:\t{features} features x {classes} classes'.format(
+            features=len(self.features.index),
+            classes=len(self.features.columns)
         )
 
-        if self._classification_table is not None:
-            classification_summary = 'classification_table:\t{features} features x {ranks} classification ranks'.format(
-                features=len(self._classification_table.index),
-                ranks=len(self._classification_table.columns)
+        if self.classifications is not None:
+            classification_summary = 'classifications:\t{features} features x {ranks} classification ranks'.format(
+                features=len(self.classifications.index),
+                ranks=len(self.classifications.columns)
             )
         else:
             classification_summary = None
 
-        if self._metadata_table is not None:
-            metadata_summary = 'metadata_table:\t{classes} classes x {metadata} sample data'.format(
-                classes=len(self._metadata_table.index),
-                metadata=len(self._metadata_table.columns)
+        if self.metadata is not None:
+            metadata_summary = 'metadata:\t{classes} classes x {metadata} sample data'.format(
+                classes=len(self.metadata.index),
+                metadata=len(self.metadata.columns)
             )
         else:
             metadata_summary = None
@@ -116,128 +97,167 @@ class SeqExp(object):
 
         return '\n'.join(outputs) + '\n'
 
-    def __getitem__(self, item):
-        """Subset the data contained within the SeqExp by columns or rows."""
+    def __getattr__(self, item):
 
-        # TODO: implement indexing by single column i.e. seq_exp['class_0']. Normally this returns a Series,
-        # TODO: but we do not have a Series implementation so need to handle this differently.
+        if item in self.sample_names:
+            return self[item]
+        else:
+            raise(AttributeError('%s not a valid attribute.' % item))
 
-        # if the subset item is type `slice` then we are subsetting by classes in the feature table
-        # if the subset item is type `list` then we are subsetting by features in the feature table
-        # if the subset item is type `pd.Series` then we are subsetting by either classes or features
+    def __getitem__(self, key):
+        """
+        Subsets the data contained within the SeqExp by columns or rows.
+        
+        Passes the __getitem__ call to the features data frame and uses the resulting data frame to create a new SeqExp
+        object. The original classifications and metadata (if they existed) are then merged with the new SeqExp object
+        which has the effect of subsetting them.
+        
+        """
 
-        # print('__getitem__.item: ', item)
-        # print('type(__getitem__.item): ', type(item))
+        # features are always subset
+        new_features = self.features[key]
 
-        # feature_table is always subset
-        new_feature_table = self.feature_table[item]
+        # need to restore new_results to a pd.DataFrame if slice returned a 1-dimensional object
+        if np.ndim(new_features) == 1:
+            new_features = pd.DataFrame(new_features)
 
-        # construct new object
-        new_seq_exp = SeqExp(new_feature_table)
+        if self.classifications is not None:
+            new_classifications = self.classifications.loc[new_features.index]
+        else:
+            new_classifications = None
 
-        # conditional subsetting of classification_table depending on the subsetting items type
-        if self.classification_table is not None:
-            # TODO need to also allow subsetting using a Series or DataFrame index, not just lists
-            if isinstance(item, slice):
-                new_seq_exp.classification_table = self.classification_table[item]
-            elif isinstance(item, pd.Series):
-                # only subset the classification_table if the index's match
-                # TODO: this is hacky. Would be safer to overide some of the pd.DataFrame methods / operators
-                if self.classification_table.index.tolist() == item.index.tolist():
-                    # print('will trim classification_table')
-                    new_seq_exp.classification_table = self.classification_table[item]
-                else:
-                    # print('wont trim classification_table')
-                    new_seq_exp.classification_table = self.classification_table
+        if self.metadata is not None:
+            new_metadata = self.metadata.loc[new_features.columns]
+        else:
+            new_metadata = None
+
+        return SeqExp(features=new_features, classifications=new_classifications, metadata=new_metadata)
+
+    def __setitem__(self, key, value):
+        """
+        Sets data within specified column(s) of the features DataFrame.
+        
+        Accepts either a SeqExp object, from which it extracts the features, or a pd.DataFrame containing the features.
+  
+        """
+
+        # make sure key is a valid column or list of columns
+        if key in self.sample_names or set(key) <= set(self.sample_names):
+
+            if isinstance(value, SeqExp):
+                features = value.features
             else:
-                new_seq_exp.classification_table = self.classification_table
+                features = value
 
-        # conditional subsetting of metadata_table depending on the subsetting items type
-        if self.metadata_table is not None:
-            # TODO need to also allow subsetting using a Series or DataFrame index, not just lists
-            if isinstance(item, list):
-                new_seq_exp.metadata_table = self.metadata_table.loc[item]
-            elif isinstance(item, pd.Series):
-                # only subset the metadata_table if the index's match
-                # TODO: this is hacky. Would be safer to overide some of the pd.DataFrame methods / operators
-                if self.metadata_table.index.tolist() == item.index.tolist():
-                    # print('will trim metadata_table')
-                    new_seq_exp.metadata_table = self.metadata_table[item]
-                else:
-                    # print('wont trim metadata_table')
-                    new_seq_exp.metadata_table = self.metadata_table
-            else:
-                new_seq_exp.metadata_table = self.metadata_table
+            new_features = self.features
+            new_features[features.columns] = features
 
-        return new_seq_exp
+            self.features = new_features
 
-    def relabund(self):
+        else:
+            raise(KeyError('%s does not exist.' % key))
+
+    # -------------- convenience methods -------------- #
+
+    def relabund(self, scaling_factor=1):
         """
         Returns a new object with abundances converted to relative abundances.
         
-        ..note:: This method leaves the original object intact, returning a new modified copy.
+        :param scaling_factor: number to multiple relative abundance values by
+        :type scaling_factor: int or float
+        
+        :return: new SeqExp object with relative abundance values
         
         """
 
-        new_feature_table = self.feature_table
-        class_sums = new_feature_table.sum(axis=0)
-        new_feature_table = new_feature_table.div(class_sums)
+        # divide features by column totals
+        new_features = self.features.div(self.features.sum(axis=0)).multiply(scaling_factor)
 
         # return a new object
-        new_seq_exp = SeqExp(
-            feature_table=new_feature_table,
-            classification_table=self.classification_table,
-            metadata_table=self.metadata_table
-        )
+        return SeqExp(features=new_features, classifications=self.classifications, metadata=self.metadata)
 
-        return new_seq_exp
+    def subset(self, items, by):
+        """
+        Subsets SeqExp by either features or samples.
+        
+        :param items: list of features or samples to subset by
+        :type items: list
+        :param by: whether to subset by features or samples
+        :type by: str, one of either `features` or `samples`
+        
+        :return: new SeqExp object subset by features or samples
+         
+        ..note:: any features whose sum across all samples becomes zero following subsetting are removed
+        
+        """
 
-    def subset_samples(self, sample_names):
-
-        new_feature_table = self.feature_table.loc[:, sample_names]
+        # subset the feature table in the correct dimensions
+        if by == 'features':
+            new_features = self.features.loc[items]
+        elif by == 'samples':
+            new_features = self.features.loc[:, items]
+        else:
+            raise(ValueError('by should be one of \'features\' or \'samples\''))
 
         # can drop any features that now have zero abundance across all remaining samples
-        new_feature_table = new_feature_table[new_feature_table.max(axis=1) > 0]
+        new_features = new_features[new_features.max(axis=1) > 0]
         
-        new_sxp = SeqExp(feature_table=new_feature_table)
-        if self.classification_table is not None:
-            new_sxp = new_sxp.merge(self.classification_table)
-        if self.metadata_table is not None:
-            new_sxp = new_sxp.merge(self.metadata_table)
+        if self.classifications is not None:
+            new_classifications = self.classifications.loc[new_features.index]
+        else:
+            new_classifications = None
 
-        return new_sxp
+        if self.metadata is not None:
+            new_metadata = self.metadata.loc[new_features.columns]
+        else:
+            new_metadata = None
 
-    def subset_features(self, feature_names):
+        return SeqExp(features=new_features, classifications=new_classifications, metadata=new_metadata)
 
-        new_feature_table = self.feature_table.loc[feature_names]
-        new_sxp = SeqExp(feature_table=new_feature_table)
-        if self.classification_table is not None:
-            new_sxp = new_sxp.merge(self.classification_table)
-        if self.metadata_table is not None:
-            new_sxp = new_sxp.merge(self.metadata_table)
+    def drop(self, items, by):
+        """
+        Drops features or samples from SeqExp.
+        
+        :param items: list of features or samples to drop
+        :type items: list
+        :param by: whether to drop from features or samples
+        :type by: str, one of either `features` or `samples`
+        
+        :return: new SeqExp object with items dropped from either features or samples
+         
+        ..note:: any features whose sum across all samples becomes zero following subsetting are removed
+        
+        """
 
-        return new_sxp
+        # subset the feature table in the correct dimensions
+        if by == 'features':
+            new_features = self.features.drop(items, axis=0)
+        elif by == 'samples':
+            new_features = self.features.drop(items, axis=1)
+        else:
+            raise(ValueError('by should be one of \'features\' or \'samples\''))
 
-    def drop_samples(self, sample_names):
+        if self.classifications is not None:
+            new_classifications = self.classifications.loc[new_features.index]
+        else:
+            new_classifications = None
 
-        new_feature_table = self.feature_table.drop(sample_names, axis=1)
-        new_sxp = SeqExp(feature_table=new_feature_table)
-        if self.classification_table is not None:
-            new_sxp = new_sxp.merge(self.classification_table)
-        if self.metadata_table is not None:
-            new_sxp = new_sxp.merge(self.metadata_table)
+        if self.metadata is not None:
+            new_metadata = self.metadata.loc[new_features.columns]
+        else:
+            new_metadata = None
 
-        return new_sxp
+        return SeqExp(features=new_features, classifications=new_classifications, metadata=new_metadata)
 
     def to_mothur_shared(self, out_file):
         """Exports FeatureTable to a Mothur shared file."""
 
-        shared = self.feature_table
+        shared = self.features
         shared = shared.transpose()
         shared = shared.reset_index()
         shared['label'] = self.label
-        shared['numOtus'] = len(self.feature_table)
-        new_columns = ['label', 'Group', 'numOtus', *self.feature_table.index]
+        shared['numOtus'] = len(self.features)
+        new_columns = ['label', 'Group', 'numOtus', *self.features.index]
         shared = shared[new_columns]
 
         shared.to_csv(out_file, sep='\t', header=True, index=False)
@@ -245,10 +265,10 @@ class SeqExp(object):
         return shared
 
     def groupby_classification(self, level):
-        """Group the SeqExp features by a classificaiton level."""
+        """Group the SeqExp features by a classificaiton."""
 
         # create table that combines features with classification at specified level
-        combined = pd.DataFrame(pd.concat([self.feature_table, self.classification_table[level]], axis=1))
+        combined = pd.DataFrame(pd.concat([self.features, self.classifications[level]], axis=1))
         combined = combined.groupby(level).sum()
         combined.columns.name = 'Group'
 
@@ -257,14 +277,14 @@ class SeqExp(object):
         new_sxp = SeqExp(new_feature_table)
 
         # only retain classification levels higher than the one used to group
-        new_classification_table = self.classification_table.loc[:, :level]
+        new_classification_table = self.classifications.loc[:, :level]
         new_classification_table = new_classification_table.groupby(level).first()
         new_classification_table = ClassificationTable(new_classification_table)
 
         new_sxp = new_sxp.merge(new_classification_table)
 
-        if self.metadata_table is not None:
-            new_sxp.metadata_table = self.metadata_table
+        if self.metadata is not None:
+            new_sxp.metadata_table = self.metadata
 
         new_sxp.label = level
 
@@ -273,12 +293,12 @@ class SeqExp(object):
     def groupby_metadata(self, data_label, func):
         """Groups samples according to their metadata using the specified function."""
 
-        label_set = set(self.metadata_table[data_label])
+        label_set = set(self.metadata[data_label])
 
         new_feats_dict = OrderedDict()
         for label in label_set:
-            classes = (self.metadata_table[self.metadata_table[data_label] == label]).index
-            features = self.feature_table[classes]
+            classes = (self.metadata[self.metadata[data_label] == label]).index
+            features = self.features[classes]
             feature_means = features.apply(func, axis=1)
 
             new_feats_dict[label] = feature_means
@@ -287,56 +307,20 @@ class SeqExp(object):
 
         return new_feats_df
 
-    # def drop(self, labels, from_='features'):
-    #     """
-    #     Drop either features or samples from the SeqExp object.
-    #
-    #     :param labels: labels to drop from the SeqExp object
-    #     Ltype items: str or list(str)
-    #     :param from_: whether to drop the supplied labels from the features or samples
-    #     :type from_: str
-    #
-    #     :return: a new SeqExp object
-    #
-    #     ..note:: can specify either the label of a single feature/sample to drop, or a list of labels to drop.
-    #     ..seealso:: SeqExp.__getitem__()
-    #
-    #     """
-    #
-    #     # check for valid `from` argument
-    #     if from_ not in ['features', 'samples']:
-    #         raise(ValueError('from_ must be one either \'features\' or \'samples\'.'))
-    #
-    #     # create new SeqExp object with subset feature_table
-    #     new_feature_table = self.feature_table
-    #     if from_ == 'features':
-    #         new_feature_table = new_feature_table.drop(labels, axis=0)
-    #     elif from_ == 'samples':
-    #         new_feature_table = new_feature_table.drop(labels, axis=1)
-    #     new_seq_exp = SeqExp(new_feature_table)
-    #
-    #     # use the merge function to do the subsetting on the classification and sample data tables if they exist
-    #     if self.classification_table is not None:
-    #         new_seq_exp = new_seq_exp.merge(self.classification_table)
-    #     if self.metadata_table is not None:
-    #         new_seq_exp = new_seq_exp.merge(self.metadata_table)
-    #
-    #     return new_seq_exp
-
-    def merge(self, right):
+    def merge(self, right, component):
         """
         Merges this SeqExp with another SeqExp or SeqExp component.
         
         Provides similar functionality to the pandas DataFrame.merge or phyloseq's merge_phyloseq.
         
-        This method takes the input SeqExp or components thereof and returns the features, classifications, and sample
-        data that matches across all the supplied objects.
+        This method takes the input SeqExp or components thereof and returns the features, classifications, and metadata
+        that matches across all the supplied objects.
         
-        :param right: SeqExp, FeatureTable, ClassificationTable, or SampleDataTable to merge with
-        :type right: SeqExp, FeatureTable, ClassificationTable, or SampleDataTable
+        :param right: SeqExp or component data frame to merge with this SeqExp object
+        :type right: SeqExp, pd.DataFrame, or pd.DataFrame like object
+        :param component: What component the `argument` represents
+        :type component: str, one of 'classifications' or 'metadata'
         
-        ..note:: can accept either another SeqExp object, or other feature_table, classification_table, or 
-        metadata_table objects.
         ..seealso:: to create a SeqExp record from only the component parts using the same process use
         `seq_experiment.concat`.
         
@@ -344,55 +328,43 @@ class SeqExp(object):
         
         """
 
-        new_feature_table = self.feature_table
+        #
+        new_feature_table = self.features
 
-        if isinstance(right, ClassificationTable):
-            try:
-                # get the intersection of this objects index and the supplied classification_table's index
+        if component.lower() == 'classifications':
+            # get the intersection of this objects index and the supplied classification_table's index
+            new_index = self.features.index.intersection(right.index)
 
-                new_index = self.feature_table.index.intersection(right.index)
+            # subset based on new index and use to return new SeqExp
+            new_feature_table = new_feature_table.loc[new_index]
+            new_classificaiton_table = right.loc[new_index]
+            new_seq_experiment = SeqExp(new_feature_table, new_classificaiton_table, self.metadata)
 
-                # subset based on new index and use to return new SeqExp
-                new_feature_table = new_feature_table.loc[new_index]
+            return new_seq_experiment
 
-                # print(new_feature_table)
+        elif component.lower() == 'metadata':
+            # get the intersection of this objects columns and the supplied metadata_table's columns
+            new_columns = self.features.columns.intersection(right.index)
 
-                new_classificaiton_table = right.loc[new_index]
+            # subset based on new index and use to return new SeqExp
+            new_feature_table = new_feature_table[new_columns]
+            new_metadata_table = right.loc[new_columns]
+            new_seq_experiment = SeqExp(new_feature_table, self.classifications, new_metadata_table)
 
-                new_seq_experiment = SeqExp(new_feature_table, new_classificaiton_table, self.metadata_table)
-                return new_seq_experiment
-
-            except Exception:
-                raise
-
-        elif isinstance(right, MetadataTable):
-            try:
-
-                # print(self.feature_table.columns)
-                # print(right.index)
-
-                # get the intersection of this objects columns and the supplied metadata_table's columns
-                new_columns = self.feature_table.columns.intersection(right.index)
-                # print('new_columsn: ', new_columns)
-
-                # subset based on new index and use to return new SeqExp
-                new_feature_table = new_feature_table[new_columns]
-
-                # print(new_feature_table)
-
-                new_metadata_table = right.loc[new_columns]
-
-                new_seq_experiment = SeqExp(new_feature_table, self.classification_table, new_metadata_table)
-                return new_seq_experiment
-
-            except Exception:
-                raise
+            return new_seq_experiment
 
         elif isinstance(right, type(None)):
             return self
 
         else:
-            raise(ValueError('invalid type for \'right\' argument'))
+            raise(ValueError('invalid type for \'component\' argument'))
+
+    def concat(self):
+        """
+        
+        :return: 
+        """
+        pass
 
     def distance(self, metric='braycurtis'):
         """      
@@ -403,7 +375,7 @@ class SeqExp(object):
         dist_metrics = ['braycurtis']
 
         if metric in dist_metrics:
-            distance = squareform(pdist(self.feature_table.transpose(), metric=metric))
+            distance = squareform(pdist(self.features.transpose(), metric=metric))
         else:
             raise(ValueError('must supply a valid distance or dissimilarity metric.'))
 
@@ -461,7 +433,7 @@ class SeqExp(object):
             if not has_distance:
                 if metric in dist_metrics:
                     # need to transpose feature table to get it in the correct orientation for pdist
-                    distance = squareform(pdist(self.feature_table.transpose(), metric=metric))
+                    distance = squareform(pdist(self.features.transpose(), metric=metric))
                 else:
                     raise(ValueError('must supply a valid metric for calculating distances/dissimilarities.'))
 
@@ -506,7 +478,7 @@ class SeqExp(object):
             if arg not in kwargs.keys():
                 kwargs[arg] = value
 
-        ax = self.feature_table.transpose().plot(**kwargs)
+        ax = self.features.transpose().plot(**kwargs)
 
         return ax
 
