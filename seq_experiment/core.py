@@ -10,8 +10,6 @@ from seq_experiment.ordination import pcoa, nmds, meta_nmds
 from seq_experiment.distance import DistanceMatrix
 from scipy.spatial.distance import pdist, squareform
 
-from seq_experiment.core import FeatureTable, ClassificationTable, MetadataTable
-
 
 class SeqExp(object):
     """
@@ -36,11 +34,11 @@ class SeqExp(object):
 
     @classifications.setter
     def classifications(self, classifications):
-        """Checks that the classification data matches the existing feature data."""
+        """Checks that the classification data matches the existing feature data before setting."""
 
         if classifications is not None:
-            if classifications.index.tolist() != self.features.index.tolist():
-                raise IndexError('classification_table index does not match the feature_table index.')
+            if not classifications.index.equals(self.features.index):
+                raise KeyError('classification_table index does not match the feature_table index.')
 
         self._classifications = classifications
 
@@ -50,11 +48,11 @@ class SeqExp(object):
 
     @metadata.setter
     def metadata(self, metadata):
-        """Checks that the metadata matches the existing feature data."""
+        """Checks that the metadata matches the existing feature data before setting."""
 
         if metadata is not None:
-            if metadata.index.tolist() != self.features.columns.values.tolist():
-                raise IndexError('classification_table index does not match the feature_table index.')
+            if not metadata.index.equals(self.features.columns):
+                raise KeyError('classification_table index does not match the feature_table index.')
 
         self._metadata = metadata
 
@@ -98,6 +96,7 @@ class SeqExp(object):
         return '\n'.join(outputs) + '\n'
 
     def __getattr__(self, item):
+        """Returns column of the features DataFrame if the item is a valid column name."""
 
         if item in self.sample_names:
             return self[item]
@@ -108,9 +107,10 @@ class SeqExp(object):
         """
         Subsets the data contained within the SeqExp by columns or rows.
         
-        Passes the __getitem__ call to the features data frame and uses the resulting data frame to create a new SeqExp
-        object. The original classifications and metadata (if they existed) are then merged with the new SeqExp object
-        which has the effect of subsetting them.
+        Passes the __getitem__ call to the features DataFrame, then uses the index and columns of this new DataFrame to
+        subset any exisiting classifications or metadata DataFrames, before creating a new SeqExp object.
+        
+        ..note:: this returns a new SeqExp
         
         """
 
@@ -170,20 +170,20 @@ class SeqExp(object):
         
         """
 
-        # divide features by column totals
+        # calculate feature abundance relative to total sample abundance
         new_features = self.features.div(self.features.sum(axis=0)).multiply(scaling_factor)
 
         # return a new object
         return SeqExp(features=new_features, classifications=self.classifications, metadata=self.metadata)
 
-    def subset(self, items, by):
+    def subset(self, by, items):
         """
         Subsets SeqExp by either features or samples.
         
-        :param items: list of features or samples to subset by
-        :type items: list
         :param by: whether to subset by features or samples
         :type by: str, one of either `features` or `samples`
+        :param items: list of features or samples to subset by
+        :type items: list
         
         :return: new SeqExp object subset by features or samples
          
@@ -214,14 +214,14 @@ class SeqExp(object):
 
         return SeqExp(features=new_features, classifications=new_classifications, metadata=new_metadata)
 
-    def drop(self, items, by):
+    def drop(self, by, items):
         """
         Drops features or samples from SeqExp.
         
-        :param items: list of features or samples to drop
-        :type items: list
         :param by: whether to drop from features or samples
         :type by: str, one of either `features` or `samples`
+        :param items: list of features or samples to drop
+        :type items: list
         
         :return: new SeqExp object with items dropped from either features or samples
          
@@ -249,20 +249,21 @@ class SeqExp(object):
 
         return SeqExp(features=new_features, classifications=new_classifications, metadata=new_metadata)
 
-    def to_mothur_shared(self, out_file):
-        """Exports FeatureTable to a Mothur shared file."""
-
-        shared = self.features
-        shared = shared.transpose()
-        shared = shared.reset_index()
-        shared['label'] = self.label
-        shared['numOtus'] = len(self.features)
-        new_columns = ['label', 'Group', 'numOtus', *self.features.index]
-        shared = shared[new_columns]
-
-        shared.to_csv(out_file, sep='\t', header=True, index=False)
-
-        return shared
+    ## NOW LOCATED IN seq_experiment.io._mothur.MothurIO AS write_shared_file(seq_exp, filepath) ##
+    # def to_mothur_shared(self, out_file):
+    #     """Exports features to a Mothur shared file."""
+    #
+    #     shared = self.features
+    #     shared = shared.transpose()
+    #     shared = shared.reset_index()
+    #     shared['label'] = self.label
+    #     shared['numOtus'] = len(self.features)
+    #     new_columns = ['label', 'Group', 'numOtus', *self.features.index]
+    #     shared = shared[new_columns]
+    #
+    #     shared.to_csv(out_file, sep='\t', header=True, index=False)
+    #
+    #     return shared
 
     def groupby_classification(self, level):
         """Group the SeqExp features by a classificaiton."""
@@ -273,15 +274,15 @@ class SeqExp(object):
         combined.columns.name = 'Group'
 
         # create new SeqExp object from grouped data
-        new_feature_table = FeatureTable(combined)
+        new_feature_table = combined
         new_sxp = SeqExp(new_feature_table)
 
         # only retain classification levels higher than the one used to group
         new_classification_table = self.classifications.loc[:, :level]
         new_classification_table = new_classification_table.groupby(level).first()
-        new_classification_table = ClassificationTable(new_classification_table)
+        new_classification_table = new_classification_table
 
-        new_sxp = new_sxp.merge(new_classification_table)
+        new_sxp = new_sxp.merge(new_classification_table, component='classifications')
 
         if self.metadata is not None:
             new_sxp.metadata_table = self.metadata
@@ -480,26 +481,29 @@ class SeqExp(object):
 
         ax = self.features.transpose().plot(**kwargs)
 
+        # tidy legend
+        ax.legend(loc='center left', bbox_to_anchor=(1.0, 0.5))
+
         return ax
 
-    @staticmethod
-    def import_mothur(mothur_shared_file, mothur_constaxonomy_file=None):
-        """
-        Creates SeqExp object from mothur output files.
-
-        :param mothur_shared_file:
-        :param mothur_constaxonomy_file:
-        :return:
-        """
-
-        feature_data = FeatureTable.read_mothur_shared_file(mothur_shared_file)
-        sxp = SeqExp(feature_data)
-
-        if mothur_constaxonomy_file is not None:
-            classification_data = ClassificationTable.read_mothur_constaxonomy_file(mothur_constaxonomy_file)
-            sxp = sxp.merge(classification_data)
-
-        return sxp
+    # @staticmethod
+    # def import_mothur(mothur_shared_file, mothur_constaxonomy_file=None):
+    #     """
+    #     Creates SeqExp object from mothur output files.
+    #
+    #     :param mothur_shared_file:
+    #     :param mothur_constaxonomy_file:
+    #     :return:
+    #     """
+    #
+    #     feature_data = FeatureTable.read_mothur_shared_file(mothur_shared_file)
+    #     sxp = SeqExp(feature_data)
+    #
+    #     if mothur_constaxonomy_file is not None:
+    #         classification_data = ClassificationTable.read_mothur_constaxonomy_file(mothur_constaxonomy_file)
+    #         sxp = sxp.merge(classification_data)
+    #
+    #     return sxp
 
 #
 # class FeatureTable(pd.DataFrame):

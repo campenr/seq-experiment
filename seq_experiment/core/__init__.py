@@ -1,5 +1,0 @@
-from seq_experiment.core._feature_table import FeatureTable
-from seq_experiment.core._classification_table import ClassificationTable
-from seq_experiment.core._metadata_table import MetadataTable
-
-from seq_experiment.core._seq_experiment import SeqExp

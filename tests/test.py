@@ -4,7 +4,7 @@ import pandas as pd
 
 from scipy.spatial.distance import squareform, pdist
 
-from seq_experiment import SeqExp, FeatureTable, ClassificationTable, MetadataTable
+from seq_experiment import SeqExp
 
 
 class Test(unittest.TestCase):
@@ -46,13 +46,20 @@ class Test(unittest.TestCase):
             columns=sample_data_names
         )
 
+        # setup container to hold test SeqExp objects. They are actually created in the first few test functions
+        self.test_sxps = dict()
+
     def test_create_seq_experiment_1(self):
         """Test creating SeqExp with only feature_table."""
 
         try:
-            SeqExp(
+            seq_exp = SeqExp(
                 features=self.test_feature_table
             )
+
+            # save this SeqExp to the test object for use by other test functions
+            self.test_sxps['sxp_f'] = seq_exp
+
         except TypeError:
             self.fail('SeqExp creation raised TypeError unexpectedly')
 
@@ -60,10 +67,14 @@ class Test(unittest.TestCase):
         """Test creating SeqExp with feature_table and classification_table."""
 
         try:
-            SeqExp(
+            seq_exp = SeqExp(
                 features=self.test_feature_table,
                 classifications=self.test_classification_table
             )
+
+            # save this SeqExp to the test object for use by other test functions
+            self.test_sxps['sxp_fc'] = seq_exp
+
         except TypeError:
             self.fail('SeqExp creation raised TypeError unexpectedly')
 
@@ -71,10 +82,14 @@ class Test(unittest.TestCase):
         """Test creating SeqExp with feature_table and sample_data_table."""
 
         try:
-            SeqExp(
+            seq_exp = SeqExp(
                 features=self.test_feature_table,
                 metadata=self.test_metadata_table
             )
+
+            # save this SeqExp to the test object for use by other test functions
+            self.test_sxps['sxp_fm'] = seq_exp
+
         except TypeError:
             self.fail('SeqExp creation raised TypeError unexpectedly')
 
@@ -82,11 +97,15 @@ class Test(unittest.TestCase):
         """Test creating SeqExp with feature_table, classification_table, and sample_data_table."""
 
         try:
-            SeqExp(
+            seq_exp = SeqExp(
                 features=self.test_feature_table,
                 classifications=self.test_classification_table,
                 metadata=self.test_metadata_table
             )
+
+            # save this SeqExp to the test object for use by other test functions
+            self.test_sxps['sxp_fcm'] = seq_exp
+
         except TypeError:
             self.fail('SeqExp creation raised TypeError unexpectedly')
 
@@ -136,16 +155,12 @@ class Test(unittest.TestCase):
 
         """
 
-        seq_exp = SeqExp(
-            features=self.test_feature_table,
-            classifications=self.test_classification_table,
-            metadata=self.test_metadata_table
-        )
-
-        try:
-            seq_exp['class_0']
-        except Exception as e:
-            self.fail(e)
+        # test on all SeqExp permutations
+        for name, seq_exp in self.test_sxps.items():
+            try:
+                seq_exp['class_0']
+            except Exception as e:
+                self.fail('Failed on %s.' % name, e)
 
     def test_indexing_2(self):
         """
@@ -155,26 +170,21 @@ class Test(unittest.TestCase):
 
         """
 
-        seq_exp = SeqExp(
-            features=self.test_feature_table,
-            classifications=self.test_classification_table,
-            metadata=self.test_metadata_table
-        )
+        # test on all SeqExp permutations
+        for name, seq_exp in self.test_sxps.items():
+            try:
+                # passing feature table directly
+                seq_exp['class_0'] = seq_exp['class_0'].features * 2
 
-        try:
-            # passing feature table directly
-            seq_exp['class_0'] = seq_exp['class_0'].features * 2
+                # passing SeqExp directly
+                new_features = seq_exp['class_0'].features * 2
+                new_seq_exp = SeqExp(features=new_features, classifications=seq_exp.classifications,
+                                     metadata=seq_exp.metadata)
 
-            # passing SeqExp directly
-            new_features = seq_exp['class_0'].features * 2
-            new_seq_exp = SeqExp(features=new_features)
-            new_seq_exp = new_seq_exp.merge(seq_exp.classifications, 'classifications')
-            new_seq_exp = new_seq_exp.merge(seq_exp.metadata, 'metadata')
+                seq_exp['class_0'] = new_seq_exp['class_0']
 
-            seq_exp['class_0'] = new_seq_exp['class_0']
-
-        except Exception as e:
-            self.fail(e)
+            except Exception as e:
+                self.fail('Failed on %s.' % name, e)
 
     def test_indexing_3(self):
         """
@@ -184,16 +194,12 @@ class Test(unittest.TestCase):
 
         """
 
-        seq_exp = SeqExp(
-            features=self.test_feature_table,
-            classifications=self.test_classification_table,
-            metadata=self.test_metadata_table
-        )
-
-        try:
-            seq_exp[['class_0', 'class_1']]
-        except Exception as e:
-            self.fail(e)
+        # test on all SeqExp permutations
+        for name, seq_exp in self.test_sxps.items():
+            try:
+                seq_exp[['class_0', 'class_1']]
+            except Exception as e:
+                self.fail('Failed on %s.' % name, e)
 
     def test_indexing_4(self):
         """
@@ -203,26 +209,21 @@ class Test(unittest.TestCase):
 
         """
 
-        seq_exp = SeqExp(
-            features=self.test_feature_table,
-            classifications=self.test_classification_table,
-            metadata=self.test_metadata_table
-        )
+        # test on all SeqExp permutations
+        for name, seq_exp in self.test_sxps.items():
+            try:
+                # passing feature table directly
+                seq_exp[['class_0', 'class_1']] = seq_exp[['class_0', 'class_1']].features * 2
 
-        try:
-            # passing feature table directly
-            seq_exp[['class_0', 'class_1']] = seq_exp[['class_0', 'class_1']].features * 2
+                # passing SeqExp directly
+                new_features = seq_exp[['class_0', 'class_1']].features * 2
+                new_seq_exp = SeqExp(features=new_features, classifications=seq_exp.classifications,
+                                     metadata=seq_exp.metadata)
 
-            # passing SeqExp directly
-            new_features = seq_exp[['class_0', 'class_1']].features * 2
-            new_seq_exp = SeqExp(features=new_features)
-            new_seq_exp = new_seq_exp.merge(seq_exp.classifications, 'classifications')
-            new_seq_exp = new_seq_exp.merge(seq_exp.metadata, 'metadata')
+                seq_exp[['class_0', 'class_1']] = new_seq_exp[['class_0', 'class_1']]
 
-            seq_exp[['class_0', 'class_1']] = new_seq_exp[['class_0', 'class_1']]
-
-        except Exception as e:
-            self.fail(e)
+            except Exception as e:
+                self.fail('Failed on %s.' % name, e)
 
     def test_indexing_5(self):
         """
@@ -232,16 +233,12 @@ class Test(unittest.TestCase):
 
         """
 
-        seq_exp = SeqExp(
-            features=self.test_feature_table,
-            classifications=self.test_classification_table,
-            metadata=self.test_metadata_table
-        )
-
-        try:
-            seq_exp.class_0
-        except Exception as e:
-            self.fail(e)
+        # test on all SeqExp permutations
+        for name, seq_exp in self.test_sxps.items():
+            try:
+                seq_exp.class_0
+            except Exception as e:
+                self.fail('Failed on %s.' % name, e)
 
     # TODO implement this
     # def test_indexing_6(self):
@@ -252,16 +249,12 @@ class Test(unittest.TestCase):
     #
     # """
     #
-    #     seq_exp = SeqExp(
-    #         features=self.test_feature_table,
-    #         classifications=self.test_classification_table,
-    #         metadata=self.test_metadata_table
-    #     )
-    #
+    # # test on all SeqExp permutations
+    # for name, seq_exp in self.test_sxps.items():    #
     #     try:
     #         seq_exp.class_0 = seq_exp.class_0.feature_table * 2
     #     except Exception as e:
-    #         self.fail(e)
+    #         self.fail('Failed on %s.' % name, e)
 
     def test_indexing_7(self):
         """
@@ -271,17 +264,13 @@ class Test(unittest.TestCase):
 
         """
 
-        seq_exp = SeqExp(
-            features=self.test_feature_table,
-            classifications=self.test_classification_table,
-            metadata=self.test_metadata_table
-        )
-
-        try:
-            seq_exp[:1]
-            seq_exp[::-1]
-        except Exception as e:
-            self.fail(e)
+        # test on all SeqExp permutations
+        for name, seq_exp in self.test_sxps.items():
+            try:
+                seq_exp[:1]
+                seq_exp[::-1]
+            except Exception as e:
+                self.fail('Failed on %s.' % name, e)
 
     # def test_indexing_8(self):
     #     """
@@ -291,104 +280,85 @@ class Test(unittest.TestCase):
     #
     #     """
     #
-    #     seq_exp = SeqExp(
-    #         features=self.test_feature_table,
-    #         classifications=self.test_classification_table,
-    #         metadata=self.test_metadata_table
-    #     )
-    #
+    # # test on all SeqExp permutations
+    # for name, seq_exp in self.test_sxps.items():
     #     try:
     #         # passing feature table directly
     #         seq_exp[:3] = seq_exp[:3].features * 2
     #
     #         # passing SeqExp directly
     #         new_features = seq_exp[:3] = seq_exp[:3].features * 2
-    #         new_seq_exp = SeqExp(features=new_features)
-    #         new_seq_exp = new_seq_exp.merge(seq_exp.classifications, 'classifications')
-    #         new_seq_exp = new_seq_exp.merge(seq_exp.metadata, 'metadata')
+    #         new_seq_exp = SeqExp(features=new_features, classifications=seq_exp.classifications,
+    #                              metadata=seq_exp.metadata)
     #
     #         seq_exp[:3] = seq_exp[:3]
     #
     #     except Exception as e:
-    #         self.fail(e)
+    #         self.fail('Failed on %s.' % name, e)
 
     # --------- test convenience functions --------- #
 
     def test_make_relabund(self):
         """."""
 
-        seq_exp = SeqExp(
-            features=self.test_feature_table,
-            classifications=self.test_classification_table,
-            metadata=self.test_metadata_table
-        )
+        # test on all SeqExp permutations
+        for name, seq_exp in self.test_sxps.items():
+            try:
+                seq_exp.relabund()
+                seq_exp.relabund(scaling_factor=100)
 
-        try:
-            seq_exp.relabund()
-            seq_exp.relabund(scaling_factor=100)
-
-        except Exception as e:
-            self.fail(e)
+            except Exception as e:
+                self.fail('Failed on %s.' % name, e)
 
     def test_subset_features(self):
         """."""
 
-        seq_exp = SeqExp(
-            features=self.test_feature_table,
-            classifications=self.test_classification_table,
-            metadata=self.test_metadata_table
-        )
+        # test on all SeqExp permutations
+        for name, seq_exp in self.test_sxps.items():
+            try:
+                seq_exp.subset(['feature_0', 'feature_1'], by='features')
 
-        try:
-            seq_exp.subset(['feature_0', 'feature_1'], by='features')
-
-        except Exception as e:
-            self.fail(e)
+            except Exception as e:
+                self.fail('Failed on %s.' % name, e)
 
     def test_subset_samples(self):
         """."""
 
-        seq_exp = SeqExp(
-            features=self.test_feature_table,
-            classifications=self.test_classification_table,
-            metadata=self.test_metadata_table
-        )
+        # test on all SeqExp permutations
+        for name, seq_exp in self.test_sxps.items():
+            try:
+                seq_exp.subset(['class_0', 'class_1'], by='samples')
 
-        try:
-            seq_exp.subset(['class_0', 'class_1'], by='samples')
-
-        except Exception as e:
-            self.fail(e)
+            except Exception as e:
+                self.fail('Failed on %s.' % name, e)
 
     def test_drop_features(self):
         """."""
 
-        seq_exp = SeqExp(
-            features=self.test_feature_table,
-            classifications=self.test_classification_table,
-            metadata=self.test_metadata_table
-        )
+        # test on all SeqExp permutations
+        for name, seq_exp in self.test_sxps.items():
+            try:
+                seq_exp.drop(['feature_0', 'feature_1'], by='features')
 
-        try:
-            seq_exp.drop(['feature_0', 'feature_1'], by='features')
-
-        except Exception as e:
-            self.fail(e)
+            except Exception as e:
+                self.fail('Failed on %s.' % name, e)
 
     def test_drop_samples(self):
         """."""
 
-        seq_exp = SeqExp(
-            features=self.test_feature_table,
-            classifications=self.test_classification_table,
-            metadata=self.test_metadata_table
-        )
+        # test on all SeqExp permutations
+        for name, seq_exp in self.test_sxps.items():
+            try:
+                seq_exp.drop(['class_0', 'class_1'], by='samples')
 
-        try:
-            seq_exp.drop(['class_0', 'class_1'], by='samples')
+            except Exception as e:
+                self.fail('Failed on %s.' % name, e)
 
-        except Exception as e:
-            self.fail(e)
+    def test_mothur_import(self):
+
+        from seq_experiment.io import MothurIO
+
+        pass
 
 if __name__ == '__main__':
     unittest.main()
