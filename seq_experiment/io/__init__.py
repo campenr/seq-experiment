@@ -1,1 +1,1 @@
-from ._mothur import MothurIO, MothurUtils
+from .mothur import MothurIO

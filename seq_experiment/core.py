@@ -19,14 +19,16 @@ class SeqExp(object):
 
     """
 
-    def __init__(self, features, classifications=None, metadata=None):
+    def __init__(self, features, classifications=None, metadata=None, seqs=None):
 
         self._classifications = None
         self._metadata = None
+        self._seqs = None
 
         self.features = features
         self.classifications = classifications
         self.metadata = metadata
+        self.seqs = seqs
 
     @property
     def classifications(self):
@@ -38,7 +40,7 @@ class SeqExp(object):
 
         if classifications is not None:
             if not classifications.index.equals(self.features.index):
-                raise KeyError('classification_table index does not match the feature_table index.')
+                raise KeyError('classifications index does not match the features index.')
 
         self._classifications = classifications
 
@@ -52,9 +54,23 @@ class SeqExp(object):
 
         if metadata is not None:
             if not metadata.index.equals(self.features.columns):
-                raise KeyError('classification_table index does not match the feature_table index.')
+                raise KeyError('metadata index does not match the features columns.')
 
         self._metadata = metadata
+
+    @property
+    def seqs(self):
+        return self._seqs
+
+    @seqs.setter
+    def seqs(self, seqs):
+        """Checks that the metadata matches the existing feature data before setting."""
+
+        if seqs is not None:
+            if not seqs.index.equals(self.features.index):
+                raise KeyError('seqs index does not match the features index.')
+
+        self._seqs = seqs
 
     @property
     def sample_names(self):
@@ -88,8 +104,16 @@ class SeqExp(object):
         else:
             metadata_summary = None
 
+        if self.seqs is not None:
+            seqs_summary = 'seqs:\t{features} features x {seqs} seqs'.format(
+                features=len(self.seqs.index),
+                seqs=len(self.seqs.columns)
+            )
+        else:
+            seqs_summary = None
+
         outputs = [feature_summary]
-        for i in [classification_summary, metadata_summary]:
+        for i in [classification_summary, metadata_summary, seqs_summary]:
             if i is not None:
                 outputs.append(i)
 
@@ -131,7 +155,12 @@ class SeqExp(object):
         else:
             new_metadata = None
 
-        return SeqExp(features=new_features, classifications=new_classifications, metadata=new_metadata)
+        if self.seqs is not None:
+            new_seqs = self.seqs.loc[new_features.index]
+        else:
+            new_seqs = None
+
+        return SeqExp(features=new_features, classifications=new_classifications, metadata=new_metadata, seqs=new_seqs)
 
     def __setitem__(self, key, value):
         """
@@ -174,7 +203,8 @@ class SeqExp(object):
         new_features = self.features.div(self.features.sum(axis=0)).multiply(scaling_factor)
 
         # return a new object
-        return SeqExp(features=new_features, classifications=self.classifications, metadata=self.metadata)
+        return SeqExp(features=new_features, classifications=self.classifications, metadata=self.metadata,
+                      seqs=self.seqs)
 
     def subset(self, by, items):
         """

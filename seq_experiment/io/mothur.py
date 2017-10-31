@@ -2,6 +2,7 @@
 
 import pandas as pd
 
+
 class MothurIO(object):
 
     @staticmethod
@@ -68,6 +69,42 @@ class MothurIO(object):
         return data
 
     @staticmethod
+    def read_fasta_file(filepath):
+        """Reads in and formats mothur fasta file."""
+
+        # the data is in the fasta file format with alternating lines of sequence name and sequence data
+        # we can read the data in as a single column and reshape it to separate out names from the sequences
+        data = pd.read_table(filepath, header=None)
+        data = pd.DataFrame(data.values.reshape(len(data) // 2, 2))
+        data.columns = ['seqName', 'seq']
+        # sequence names are in the fasta format and preceeded with '>' which we must remove
+        data.index = data['seqName'].str.split('>', 1, expand=True)[1]
+        data = data.drop('seqName', axis=1)
+        data.index = data.index.rename(None)
+
+        return data
+
+    @staticmethod
+    def read_repfasta_file(filepath):
+        """Reads in and formats mothur fasta file."""
+
+        # the data is in the fasta file format with alternating lines of sequence name and sequence data
+        # we can read the data in as a single column and reshape it to separate out names from the sequences
+        data = pd.read_table(filepath, header=None, sep=',')
+        data = pd.DataFrame(data.values.reshape(len(data) // 2, 2))
+        data.columns = ['seqName', 'seq']
+        # sequence names are in the fasta format and preceeded with '>' which we must remove
+        # sequence names for the repfasta file also have excess information we can strip away
+        data['seqName'] = data['seqName'].str.split('>', 1, expand=True)[1]
+        data['seqName'] = data['seqName'].str.split('|', 1, expand=True)[0]
+        data['seqName'] = data['seqName'].str.split('\t', 1, expand=True)[1]
+        data.index = data['seqName']
+        data = data.drop('seqName', axis=1)
+        data.index = data.index.rename(None)
+
+        return data
+
+    @staticmethod
     def write_shared_file(seq_exp, filepath):
         """Writes feature table out in shared file format."""
 
@@ -82,16 +119,3 @@ class MothurIO(object):
         shared.to_csv(filepath, sep='\t', header=True, index=False)
 
         return filepath
-
-
-class MothurUtils(object):
-
-    @staticmethod
-    def tidy_mothur_classifications(classification_data):
-        """Renoves the reported classification percentage agreements that Mothur appends to the classificaitons."""
-
-        new_classification_data = classification_data.copy(deep=True)
-        for column in classification_data:
-            new_classification_data[column] = new_classification_data[column].str.rsplit('(', 1, expand=True)[0]
-
-        return new_classification_data
