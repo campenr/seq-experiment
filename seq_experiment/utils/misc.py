@@ -1,5 +1,6 @@
 import hashlib
 
+
 def hash_seqs(sequences):
     """
     Generates hexdigest of Sha1 hash for each sequence in a list of sequences.
