@@ -76,9 +76,25 @@ class SeqExp(object):
     def sample_names(self):
         return self.features.columns.tolist()
 
+    @sample_names.setter
+    def sample_names(self, sample_names):
+
+        self.features.columns = sample_names
+
+        if self.metadata is not None:
+            self.metadata.index = sample_names
+
     @property
     def feature_names(self):
         return self.features.index.tolist()
+
+    @feature_names.setter
+    def feature_names(self, feature_names):
+
+        self.features.index = feature_names
+
+        if self.classifications is not None:
+            self.classifications.index = feature_names
 
     def __str__(self):
         """."""

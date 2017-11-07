@@ -109,27 +109,36 @@ class Test(unittest.TestCase):
         except TypeError:
             self.fail('SeqExp creation raised TypeError unexpectedly')
 
-    # def test_enforce_classification_table_type(self):
-    #     """test that non-pd.DataFrame types raise errors"""
-    #
-    #     test_types = ['str', 1, 1.0, list(), dict(), set(), pd.DataFrame()]
-    #     for type_ in test_types:
-    #         with self.assertRaises(TypeError):
-    #             SeqExp(
-    #                 features=self.test_feature_table,
-    #                 classifications=type_
-    #             )
-    #
-    # def test_enforce_sample_data_table_type(self):
-    #     """test that non-pd.DataFrame types raise errors"""
-    #
-    #     test_types = ['str', 1, 1.0, list(), dict(), set(), pd.DataFrame()]
-    #     for type_ in test_types:
-    #         with self.assertRaises(TypeError):
-    #             SeqExp(
-    #                 features=self.test_feature_table,
-    #                 metadata=type_
-    #             )
+    def test_change_sample_names(self):
+
+        try:
+            seq_exp = SeqExp(
+                features=self.test_feature_table,
+                classifications=self.test_classification_table,
+                metadata=self.test_metadata_table
+            )
+
+            new_names = ['%sx' % old_name for old_name in seq_exp.sample_names]
+            seq_exp.sample_names = new_names
+
+        except ValueError:
+            self.fail('Editing sample_names raised ValueError unexpectedly')
+
+    def test_change_feature_names(self):
+
+        try:
+            seq_exp = SeqExp(
+                features=self.test_feature_table,
+                classifications=self.test_classification_table,
+                metadata=self.test_metadata_table
+            )
+
+            new_names = ['%sx' % old_name for old_name in seq_exp.feature_names]
+            seq_exp.feature_names = new_names
+
+        except ValueError:
+            self.fail('Editing feature_names raised ValueError unexpectedly')
+
 
     def test_ordination_with_distance(self):
 
