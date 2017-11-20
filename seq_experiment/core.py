@@ -6,6 +6,8 @@ from matplotlib.colors import LinearSegmentedColormap
 
 from collections import OrderedDict
 
+from seq_experiment.indexing import _FeatureIndexer
+
 from seq_experiment.ordination import pcoa, nmds, meta_nmds
 from seq_experiment.distance import DistanceMatrix
 from scipy.spatial.distance import pdist, squareform
@@ -74,7 +76,8 @@ class SeqExp(object):
 
     @property
     def sample_names(self):
-        return self.features.columns.tolist()
+        # return self.features.columns.tolist()
+        return self.features.columns
 
     @sample_names.setter
     def sample_names(self, sample_names):
@@ -86,7 +89,8 @@ class SeqExp(object):
 
     @property
     def feature_names(self):
-        return self.features.index.tolist()
+        # return self.features.index.tolist()
+        return self.features.index
 
     @feature_names.setter
     def feature_names(self, feature_names):
@@ -95,6 +99,10 @@ class SeqExp(object):
 
         if self.classifications is not None:
             self.classifications.index = feature_names
+
+    @property
+    def fx(self):
+        return _FeatureIndexer(self)
 
     def __str__(self):
         """."""
@@ -135,13 +143,16 @@ class SeqExp(object):
 
         return '\n'.join(outputs) + '\n'
 
-    def __getattr__(self, item):
-        """Returns column of the features DataFrame if the item is a valid column name."""
+    def __repr__(self):
+        return str(self)
 
-        if item in self.sample_names:
-            return self[item]
-        else:
-            raise(AttributeError('%s not a valid attribute.' % item))
+    # def __getattr__(self, item):
+    #     """Returns column of the features DataFrame if the item is a valid column name."""
+    #
+    #     if item in self.sample_names:
+    #         return self[item]
+    #     else:
+    #         raise(AttributeError('%s not a valid attribute.' % item))
 
     def __getitem__(self, key):
         """
@@ -150,14 +161,19 @@ class SeqExp(object):
         Passes the __getitem__ call to the features DataFrame, then uses the index and columns of this new DataFrame to
         subset any exisiting classifications or metadata DataFrames, before creating a new SeqExp object.
         
-        ..note:: this returns a new SeqExp
+        ..note:: this returns a new SeqExp object
+
+        ..see also:: for more advanced subsetting based on the contents of each separate dataframe attribute, and to
+            subset the features dataframe by features rather than by samples use `sxp.fx`, `sxp.cx`, `sxp.mx`, and
+            `sxp.sx` for advanced subsetting by the features, classifications, metadata, and sequences dataframes
+            respectively.
         
         """
 
         # features are always subset
         new_features = self.features[key]
 
-        # need to restore new_results to a pd.DataFrame if slice returned a 1-dimensional object
+        # need to restore new_features to a pd.DataFrame if slice returned a 1-dimensional object
         if np.ndim(new_features) == 1:
             new_features = pd.DataFrame(new_features)
 
@@ -203,6 +219,28 @@ class SeqExp(object):
             raise(KeyError('%s does not exist.' % key))
 
     # -------------- convenience methods -------------- #
+
+    def filter(self, items=None, like=None, regex=None, axis=None):
+
+        """
+        Subset rows or columns of dataframe according to labels in
+        the specified index.
+
+        Note that this routine does not filter a dataframe on its
+        contents. The filter is applied to the labels of the index.
+
+        """
+
+        pass
+
+    def sample(self, n=None, frac=None, replace=False, weights=None,
+               random_state=None, axis=None):
+        """
+        Returns a random sample of items from an axis of object.
+
+        """
+
+        pass
 
     def relabund(self, scaling_factor=1):
         """
