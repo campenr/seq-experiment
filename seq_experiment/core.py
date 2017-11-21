@@ -6,11 +6,14 @@ from matplotlib.colors import LinearSegmentedColormap
 
 from collections import OrderedDict
 
-from seq_experiment.indexing import _FeatureIndexer
+from seq_experiment.indexing import _FeatureIndexer, _MetadataIndexer
 
 from seq_experiment.ordination import pcoa, nmds, meta_nmds
 from seq_experiment.distance import DistanceMatrix
 from scipy.spatial.distance import pdist, squareform
+
+import functools
+from copy import deepcopy
 
 
 class SeqExp(object):
@@ -100,10 +103,6 @@ class SeqExp(object):
         if self.classifications is not None:
             self.classifications.index = feature_names
 
-    @property
-    def fx(self):
-        return _FeatureIndexer(self)
-
     def __str__(self):
         """."""
 
@@ -143,8 +142,8 @@ class SeqExp(object):
 
         return '\n'.join(outputs) + '\n'
 
-    def __repr__(self):
-        return str(self)
+    # def __repr__(self):
+    #     return str(self)
 
     # def __getattr__(self, item):
     #     """Returns column of the features DataFrame if the item is a valid column name."""
@@ -169,6 +168,8 @@ class SeqExp(object):
             respectively.
         
         """
+
+        print('key: ', key)
 
         # features are always subset
         new_features = self.features[key]
@@ -217,6 +218,15 @@ class SeqExp(object):
 
         else:
             raise(KeyError('%s does not exist.' % key))
+
+    # -------------- fancy indexing -------------- #
+
+    @classmethod
+    def _create_indexer(cls, name, indexer):
+        """Create an indexer like _name in the class."""
+        if getattr(cls, name, None) is None:
+            _indexer = functools.partial(indexer, name)
+            setattr(cls, name, property(_indexer))  # , doc=indexer.__doc__))
 
     # -------------- convenience methods -------------- #
 
@@ -392,7 +402,7 @@ class SeqExp(object):
 
         return new_feats_df
 
-    def merge(self, right, component):
+    def merge(self, right, component=None):
         """
         Merges this SeqExp with another SeqExp or SeqExp component.
         
@@ -404,7 +414,7 @@ class SeqExp(object):
         :param right: SeqExp or component data frame to merge with this SeqExp object
         :type right: SeqExp, pd.DataFrame, or pd.DataFrame like object
         :param component: What component the `argument` represents
-        :type component: str, one of 'classifications' or 'metadata'
+        :type component: str, one of 'features', 'classifications', or 'metadata'
         
         ..seealso:: to create a SeqExp record from only the component parts using the same process use
         `seq_experiment.concat`.
@@ -413,33 +423,84 @@ class SeqExp(object):
         
         """
 
-        #
-        new_feature_table = self.features
+        if (type(right) == type(self)) and (component is None):
+            # can only merge two SeqExp objects if component is not set
 
-        if component.lower() == 'classifications':
-            # get the intersection of this objects index and the supplied classification_table's index
-            new_index = self.features.index.intersection(right.index)
+            new_sxp = deepcopy(self)
+            for attr_name in ['features', 'classifications', 'metadata', 'seqs']:
+                attr = getattr(right, attr_name, None)
+                if attr is not None:
+                    # recursively merge in each attribute of the SeqExp to be merged
+                    new_sxp = new_sxp.merge(right=attr, component=attr_name)
 
-            # subset based on new index and use to return new SeqExp
-            new_feature_table = new_feature_table.loc[new_index]
-            new_classificaiton_table = right.loc[new_index]
-            new_seq_experiment = SeqExp(new_feature_table, new_classificaiton_table, self.metadata)
+            return new_sxp
 
-            return new_seq_experiment
+        elif component.lower() == 'features':
+            # merge in new features, subsetting other components as necessary, returning new SeqExp
+
+            new_feature_names = self.features.index.intersection(right.index)
+            new_sample_names = self.features.columns.intersection(right.columns)
+
+            new_features = right.loc[new_feature_names, new_sample_names]
+
+            if self.classifications is not None:
+                new_classifications = self.classifications.loc[new_feature_names]
+            else:
+                new_classifications = None
+
+            if self.metadata is not None:
+                new_metadata = self.metadata.loc[new_sample_names]
+            else:
+                new_metadata = None
+
+            if self.seqs is not None:
+                new_seqs = self.seqs.loc[new_features.index]
+            else:
+                new_seqs = None
+
+            return SeqExp(new_features, new_classifications, new_metadata, new_seqs)
+
+        elif component.lower() == 'classifications':
+            # merge in new classifications, subsetting other components as necessary, returning new SeqExp
+
+            new_feature_names = self.classifications.index.intersection(right.index)
+            new_classification_names = self.classifications.columns.intersection(right.columns)
+
+            new_classifications = right.loc[new_feature_names, new_classification_names]
+            new_features = self.features.loc[new_feature_names]
+
+            if self.seqs is not None:
+                new_seqs = self.seqs.loc[new_feature_names]
+            else:
+                new_seqs = None
+
+            return SeqExp(new_features, new_classifications, self.metadata, new_seqs)
 
         elif component.lower() == 'metadata':
-            # get the intersection of this objects columns and the supplied metadata_table's columns
-            new_columns = self.features.columns.intersection(right.index)
+            # merge in new metadata, subsetting other components as necessary, returning new SeqExp
 
-            # subset based on new index and use to return new SeqExp
-            new_feature_table = new_feature_table[new_columns]
-            new_metadata_table = right.loc[new_columns]
-            new_seq_experiment = SeqExp(new_feature_table, self.classifications, new_metadata_table)
+            new_sample_names = self.metadata.index.intersection(right.index)
+            new_metadata_names = self.metadata.columns.intersection(right.columns)
 
-            return new_seq_experiment
+            new_metadata = right.loc[new_sample_names, new_metadata_names]
+            new_features = self.features.loc[:, new_sample_names]
 
-        elif isinstance(right, type(None)):
-            return self
+            return SeqExp(new_features, self.classifications, new_metadata, self.seqs)
+
+        elif component.lower() == 'seqs':
+
+            new_feature_names = self.seqs.index.intersection(right.index)
+            new_seq_names = self.seqs.columns.intersection(right.columns)
+
+            new_seqs = right.loc[new_feature_names, new_seq_names]
+            new_features = self.features.loc[new_feature_names]
+
+            if self.classifications is not None:
+                new_classifications = self.classifications.loc[new_feature_names]
+            else:
+                new_classifications = None
+
+            return SeqExp(new_features, new_classifications, self.metadata, new_seqs)
 
         else:
             raise(ValueError('invalid type for \'component\' argument'))
@@ -687,3 +748,13 @@ class SeqExp(object):
 #     def __init__(self, *args, **kwargs):
 #         super(SampleDataTable, self).__init__(*args, **kwargs)
 #
+
+# add advanced indexing methods to SeqExp
+
+indexers = {
+    'fx': _FeatureIndexer,
+    'mx': _MetadataIndexer
+}
+
+for _name, _indexer in indexers.items():
+    SeqExp._create_indexer(_name, _indexer)

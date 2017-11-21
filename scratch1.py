@@ -26,27 +26,85 @@ test_feature_table = pd.DataFrame(
     columns=classes
 )
 
-# # create dummy classification table
-# test_classification_table = pd.DataFrame(
-#     np.random.randint(low=0, high=10, size=(feature_count, classification_count)),
-#     index=features,
-#     columns=classification_ranks
-# )
-#
-# test_metadata_table = pd.DataFrame(
-#     np.random.randint(low=0, high=100, size=(class_count, sample_data_count)),
-#     index=classes,
-#     columns=sample_data_names
-# )
+# create dummy classification table
+test_classification_table = pd.DataFrame(
+    np.random.randint(low=0, high=10, size=(feature_count, classification_count)),
+    index=features,
+    columns=classification_ranks
+)
 
-sxp = SeqExp(features=test_feature_table)#, classifications=test_classification_table, metadata=test_metadata_table)
+test_metadata_table = pd.DataFrame(
+    np.random.randint(low=0, high=100, size=(class_count, sample_data_count)),
+    index=classes,
+    columns=sample_data_names
+)
+
+sxp = SeqExp(features=test_feature_table, classifications=test_classification_table, metadata=test_metadata_table)
 
 
 # --------------- TEST1 --------------- #
 
-# print(sxp.fx['feature_1'])
-sxp2 = sxp.fx['feature_1':'feature_3']
-print(sxp.features)
-print(sxp2.features)
-# print(sxp.fx[:, 'class_2'])
+# print(sxp)
+#
+# print('\n#################################\n')
+# print(sxp.fx['feature_0'])
+# print(sxp.fx['feature_0'].features)
+# print(sxp.fx['feature_0'].classifications)
+#
+# print('\n#################################\n')
+# print(sxp.fx[0])
+#
+# print('\n#################################\n')
+# print(sxp.fx['feature_1':'feature_3'])
+# print(sxp.fx['feature_1':'feature_3'].features)
+# print(sxp.fx['feature_1':'feature_3'].classifications)
+#
+# print('\n#################################\n')
+# print(sxp.fx['feature_5', 'class_2'])
+# print(sxp.fx['feature_5', 'class_2'].features)
+# print(sxp.fx['feature_5', 'class_2'].classifications)
+#
+# print('\n#################################\n')
 # print(sxp.fx[:,:])
+#
+# print('\n#################################\n')
+# print(sxp.fx[:, 1])
+#
+# print('\n#################################\n')
+# print(sxp.fx[:, sxp.metadata['sample_data_0'] < 50].metadata)
+# print(sxp.fx[:, sxp.metadata['sample_data_0'] > 50].metadata)
+#
+# print(sxp.metadata)
+# print(sxp.metadata.loc['class_0'] > 50)
+#
+# print(sxp.fx[:, sxp.metadata['sample_data_0'] > 50])
+# print(sxp.mx[sxp.metadata['sample_data_0'] > sxp.metadata['sample_data_0'].mean()])
+# print(sxp.mx[:, sxp.metadata.loc['class_0'] > 50])
+#
+# print('\n#################################\n')
+# print(sxp.fx[sxp.features['class_0'] > 10])
+#
+# print('\n#################################\n')
+# print(sxp.fx[:, sxp.features.loc['feature_0'] > 500].features)
+# print(sxp.fx[:, sxp.features.loc['feature_0'] < 500].features)
+#
+
+sxp1 = sxp.mx[:, sxp.metadata.loc['class_0'] > 50]
+sxp2 = sxp.fx['feature_1':'feature_3']
+
+print(sxp1)
+print(sxp2)
+
+print('################################')
+
+sxp3 = sxp1.merge(sxp2)
+
+print('################################')
+
+print(sxp3)
+
+
+# feats_ = sxp.features
+#
+# print(feats_.loc[:'feature_2':].index)
+# print(feats_.iloc[:3].index)
