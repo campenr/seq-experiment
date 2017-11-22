@@ -39,6 +39,7 @@ test_metadata_table = pd.DataFrame(
     columns=sample_data_names
 )
 
+
 sxp = SeqExp(features=test_feature_table, classifications=test_classification_table, metadata=test_metadata_table)
 
 
@@ -90,22 +91,26 @@ print(sxp)
 # print(sxp.fx[:, sxp.features.loc['feature_0'] < 500].features)
 
 
-sxp1 = sxp.mx[:, sxp.metadata.loc['class_0'] > 50]
-sxp2 = sxp.fx['feature_1':'feature_3']
-
-print(sxp1)
-print(sxp2)
-
-print('################################')
-
-sxp3 = sxp1.merge(sxp2)
-
-print('################################')
-
-print(sxp3)
+# sxp1 = sxp.mx[:, sxp.metadata.loc['class_0'] > 50]
+# sxp2 = sxp.fx['feature_1':'feature_3']
+#
+# print(sxp1)
+# print(sxp2)
+#
+# print('################################')
+#
+# sxp3 = sxp1.merge(sxp2)
+#
+# print('################################')
+#
+# print(sxp3)
 
 
 # feats_ = sxp.features
 #
 # print(feats_.loc[:'feature_2':].index)
 # print(feats_.iloc[:3].index)
+
+print('################################')
+print(sxp[::2])
+print(sxp['class_0'])

@@ -100,6 +100,8 @@ class SeqExp(object):
 
         if self.classifications is not None:
             self.classifications.index = feature_names
+        if self.seqs is not None:
+            self.seqs.index = feature_names
 
     def __str__(self):
         """."""
@@ -140,25 +142,9 @@ class SeqExp(object):
 
         return '\n'.join(outputs) + '\n'
 
-    # def __repr__(self):
-    #     return str(self)
-
-    # def __getattr__(self, item):
-    #     """Returns column of the features DataFrame if the item is a valid column name."""
-    #
-    #     if item in self.sample_names:
-    #         return self[item]
-    #     else:
-    #         raise(AttributeError('%s not a valid attribute.' % item))
-
     def __getitem__(self, key):
         """
-        Subsets the data contained within the SeqExp by columns or rows.
-        
-        Passes the __getitem__ call to the features DataFrame, then uses the index and columns of this new DataFrame to
-        subset any exisiting classifications or metadata DataFrames, before creating a new SeqExp object.
-        
-        ..note:: this returns a new SeqExp object
+        Subsets the data contained within the SeqExp by columns in the features dataframe.
 
         ..see also:: for more advanced subsetting based on the contents of each separate dataframe attribute, and to
             subset the features dataframe by features rather than by samples use `sxp.fx`, `sxp.cx`, `sxp.mx`, and
@@ -167,31 +153,26 @@ class SeqExp(object):
         
         """
 
-        print('key: ', key)
-
-        # features are always subset
+        # features are always subset when using SeqExp.__getitem__
         new_features = self.features[key]
 
-        # need to restore new_features to a pd.DataFrame if slice returned a 1-dimensional object
-        if np.ndim(new_features) == 1:
+        # conditionally correct type of attribute if dimensionality has been reduced during subset
+        # assumes attr is pd.DataFrame or pd.DataFrame like object, with _constructor_sliced method implemented
+        if isinstance(new_features, type(self.features)):
+            pass
+        elif isinstance(new_features, self.features._constructor_sliced):
+            print('here')
             new_features = pd.DataFrame(new_features)
-
-        if self.classifications is not None:
-            new_classifications = self.classifications.loc[new_features.index]
         else:
-            new_classifications = None
+            new_features = pd.DataFrame([new_features], index=[key[0]], columns=[key[1]])
 
-        if self.metadata is not None:
-            new_metadata = self.metadata.loc[new_features.columns]
-        else:
-            new_metadata = None
+        # may need to correct data orientation
+        if not new_features.index.isin(self.features.index).all():
+            new_features = new_features.transpose()
 
-        if self.seqs is not None:
-            new_seqs = self.seqs.loc[new_features.index]
-        else:
-            new_seqs = None
+        new_sxp = self.merge(right=new_features, component='features')
 
-        return SeqExp(features=new_features, classifications=new_classifications, metadata=new_metadata, seqs=new_seqs)
+        return new_sxp
 
     def __setitem__(self, key, value):
         """
