@@ -44,7 +44,7 @@ sxp = SeqExp(features=test_feature_table, classifications=test_classification_ta
 
 # --------------- TEST1 --------------- #
 
-# print(sxp)
+print(sxp)
 #
 # print('\n#################################\n')
 # print(sxp.fx['feature_0'])
@@ -73,21 +73,22 @@ sxp = SeqExp(features=test_feature_table, classifications=test_classification_ta
 # print('\n#################################\n')
 # print(sxp.fx[:, sxp.metadata['sample_data_0'] < 50].metadata)
 # print(sxp.fx[:, sxp.metadata['sample_data_0'] > 50].metadata)
-#
+
 # print(sxp.metadata)
 # print(sxp.metadata.loc['class_0'] > 50)
-#
+
+# print('\n#################################\n')
 # print(sxp.fx[:, sxp.metadata['sample_data_0'] > 50])
 # print(sxp.mx[sxp.metadata['sample_data_0'] > sxp.metadata['sample_data_0'].mean()])
 # print(sxp.mx[:, sxp.metadata.loc['class_0'] > 50])
 #
 # print('\n#################################\n')
-# print(sxp.fx[sxp.features['class_0'] > 10])
+# print(sxp.fx[sxp.features['class_0'] > 500])
 #
 # print('\n#################################\n')
 # print(sxp.fx[:, sxp.features.loc['feature_0'] > 500].features)
 # print(sxp.fx[:, sxp.features.loc['feature_0'] < 500].features)
-#
+
 
 sxp1 = sxp.mx[:, sxp.metadata.loc['class_0'] > 50]
 sxp2 = sxp.fx['feature_1':'feature_3']

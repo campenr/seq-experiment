@@ -6,7 +6,7 @@ from matplotlib.colors import LinearSegmentedColormap
 
 from collections import OrderedDict
 
-from seq_experiment.indexing import _FeatureIndexer, _MetadataIndexer
+from seq_experiment.indexing import get_indexer_mappings, _Indexer
 
 from seq_experiment.ordination import pcoa, nmds, meta_nmds
 from seq_experiment.distance import DistanceMatrix
@@ -79,7 +79,6 @@ class SeqExp(object):
 
     @property
     def sample_names(self):
-        # return self.features.columns.tolist()
         return self.features.columns
 
     @sample_names.setter
@@ -92,7 +91,6 @@ class SeqExp(object):
 
     @property
     def feature_names(self):
-        # return self.features.index.tolist()
         return self.features.index
 
     @feature_names.setter
@@ -749,12 +747,6 @@ class SeqExp(object):
 #         super(SampleDataTable, self).__init__(*args, **kwargs)
 #
 
-# add advanced indexing methods to SeqExp
-
-indexers = {
-    'fx': _FeatureIndexer,
-    'mx': _MetadataIndexer
-}
-
-for _name, _indexer in indexers.items():
-    SeqExp._create_indexer(_name, _indexer)
+# register advanced indexing methods to SeqExp object
+for _name in get_indexer_mappings():
+    SeqExp._create_indexer(_name, _Indexer)
