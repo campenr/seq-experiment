@@ -26,6 +26,7 @@ class SeqExp(object):
 
     def __init__(self, features, classifications=None, metadata=None, seqs=None):
 
+        self._features = None
         self._classifications = None
         self._metadata = None
         self._seqs = None
@@ -35,9 +36,39 @@ class SeqExp(object):
         self.metadata = metadata
         self.seqs = seqs
 
+    # -------------- basic getters -------------- #
+
+    @property
+    def features(self):
+        return self._features
+
     @property
     def classifications(self):
         return self._classifications
+
+    @property
+    def metadata(self):
+        return self._metadata
+
+    @property
+    def seqs(self):
+        return self._seqs
+
+    def _get_components(self):
+
+        return {
+            'features': self.features,
+            'classifications': self.classifications,
+            'metadata': self.metadata,
+            'seqs': self.seqs
+        }
+
+    # -------------- basic setters -------------- #
+
+    @features.setter
+    def features(self, features):
+
+        self._features = features
 
     @classifications.setter
     def classifications(self, classifications):
@@ -49,10 +80,6 @@ class SeqExp(object):
 
         self._classifications = classifications
 
-    @property
-    def metadata(self):
-        return self._metadata
-
     @metadata.setter
     def metadata(self, metadata):
         """Checks that the metadata matches the existing feature data before setting."""
@@ -63,10 +90,6 @@ class SeqExp(object):
 
         self._metadata = metadata
 
-    @property
-    def seqs(self):
-        return self._seqs
-
     @seqs.setter
     def seqs(self, seqs):
         """Checks that the metadata matches the existing feature data before setting."""
@@ -76,6 +99,8 @@ class SeqExp(object):
                 raise KeyError('seqs index does not match the features index.')
 
         self._seqs = seqs
+
+    # -------------- convenience getters/setters -------------- #
 
     @property
     def sample_names(self):
@@ -102,6 +127,8 @@ class SeqExp(object):
             self.classifications.index = feature_names
         if self.seqs is not None:
             self.seqs.index = feature_names
+
+    # -------------- ??? -------------- #
 
     def __str__(self):
         """."""
@@ -150,7 +177,7 @@ class SeqExp(object):
             subset the features dataframe by features rather than by samples use `sxp.fx`, `sxp.cx`, `sxp.mx`, and
             `sxp.sx` for advanced subsetting by the features, classifications, metadata, and sequences dataframes
             respectively.
-        
+
         """
 
         # features are always subset when using SeqExp.__getitem__
@@ -170,33 +197,10 @@ class SeqExp(object):
         if not new_features.index.isin(self.features.index).all():
             new_features = new_features.transpose()
 
-        new_sxp = self.merge(right=new_features, component='features')
+        # merge the new features back into the SeqExp object, sorting by the order of the new features dataframe
+        new_sxp = self.merge(right=new_features, component='features', sort_by='right')
 
         return new_sxp
-
-    def __setitem__(self, key, value):
-        """
-        Sets data within specified column(s) of the features DataFrame.
-        
-        Accepts either a SeqExp object, from which it extracts the features, or a pd.DataFrame containing the features.
-  
-        """
-
-        # make sure key is a valid column or list of columns
-        if key in self.sample_names or set(key) <= set(self.sample_names):
-
-            if isinstance(value, SeqExp):
-                features = value.features
-            else:
-                features = value
-
-            new_features = self.features
-            new_features[features.columns] = features
-
-            self.features = new_features
-
-        else:
-            raise(KeyError('%s does not exist.' % key))
 
     # -------------- fancy indexing -------------- #
 
@@ -209,18 +213,6 @@ class SeqExp(object):
 
     # -------------- convenience methods -------------- #
 
-    def filter(self, items=None, like=None, regex=None, axis=None):
-
-        """
-        Subset rows or columns of dataframe according to labels in
-        the specified index.
-
-        Note that this routine does not filter a dataframe on its
-        contents. The filter is applied to the labels of the index.
-
-        """
-
-        pass
 
     def sample(self, n=None, frac=None, replace=False, weights=None,
                random_state=None, axis=None):
@@ -322,22 +314,6 @@ class SeqExp(object):
 
         return SeqExp(features=new_features, classifications=new_classifications, metadata=new_metadata)
 
-    ## NOW LOCATED IN seq_experiment.io._mothur.MothurIO AS write_shared_file(seq_exp, filepath) ##
-    # def to_mothur_shared(self, out_file):
-    #     """Exports features to a Mothur shared file."""
-    #
-    #     shared = self.features
-    #     shared = shared.transpose()
-    #     shared = shared.reset_index()
-    #     shared['label'] = self.label
-    #     shared['numOtus'] = len(self.features)
-    #     new_columns = ['label', 'Group', 'numOtus', *self.features.index]
-    #     shared = shared[new_columns]
-    #
-    #     shared.to_csv(out_file, sep='\t', header=True, index=False)
-    #
-    #     return shared
-
     def groupby_classification(self, level):
         """Group the SeqExp features by a classificaiton."""
 
@@ -381,7 +357,7 @@ class SeqExp(object):
 
         return new_feats_df
 
-    def merge(self, right, component=None):
+    def merge(self, right, component=None, sort_by='left'):
         """
         Merges this SeqExp with another SeqExp or SeqExp component.
         
@@ -402,23 +378,59 @@ class SeqExp(object):
         
         """
 
+        component = component.lower()
+        if component not in self._get_components():
+            raise ValueError('invalid \'component\'. Must be one of `features`, `classifications`, `metadata`, or '
+                             '`seqs`')
+        sort_by = sort_by.lower()
+        if sort_by.lower() not in ['left', 'right']:
+            raise ValueError('invalid \'sort_by\'. Must be one of `left` or `right`')
+
+        # --- merging with a SeqExp object --- #
+
         if (type(right) == type(self)) and (component is None):
             # can only merge two SeqExp objects if component is not set
 
+            # recursively merge in each attribute of the SeqExp to be then return new SeqExp
             new_sxp = deepcopy(self)
             for attr_name in ['features', 'classifications', 'metadata', 'seqs']:
                 attr = getattr(right, attr_name, None)
                 if attr is not None:
-                    # recursively merge in each attribute of the SeqExp to be merged
-                    new_sxp = new_sxp.merge(right=attr, component=attr_name)
+                    new_sxp = new_sxp.merge(right=attr, component=attr_name, sort_by=sort_by)
 
             return new_sxp
 
-        elif component.lower() == 'features':
+        # --- merging with a SeqExp component --- #
+
+        # get left side for the merge
+        left = getattr(self, component)
+
+        # get new indexes and columns that will be sorted by, as well as the indexes/columns of the existing
+        # component if available
+        if left is None:
+            # if component is not already present then we must sort by the new component being merged in
+            index, columns = right.index, right.columns
+            other_index, other_columns = None, None  # to stop the IDE complaining
+        elif sort_by == 'right':
+            index, columns = right.index, right.columns
+            other_index, other_columns = left.index, left.columns
+        else:
+            index, columns = left.index, left.columns
+            other_index, other_columns = right.index, right.columns
+
+        # TODO: allow other options for merging other than intersection
+        # conditionally get the intersection of the new index/columns and the other index/columns
+        if left is not None:
+            new_index = index.intersection(other_index)
+            new_columns = columns.intersection(other_columns)
+        else:
+            new_index, new_columns = index, columns
+
+        if component == 'features':
             # merge in new features, subsetting other components as necessary, returning new SeqExp
 
-            new_feature_names = self.features.index.intersection(right.index)
-            new_sample_names = self.features.columns.intersection(right.columns)
+            new_feature_names = new_index
+            new_sample_names = new_columns
 
             new_features = right.loc[new_feature_names, new_sample_names]
 
@@ -439,11 +451,11 @@ class SeqExp(object):
 
             return SeqExp(new_features, new_classifications, new_metadata, new_seqs)
 
-        elif component.lower() == 'classifications':
+        elif component == 'classifications':
             # merge in new classifications, subsetting other components as necessary, returning new SeqExp
 
-            new_feature_names = self.classifications.index.intersection(right.index)
-            new_classification_names = self.classifications.columns.intersection(right.columns)
+            new_feature_names = new_index
+            new_classification_names = new_columns
 
             new_classifications = right.loc[new_feature_names, new_classification_names]
             new_features = self.features.loc[new_feature_names]
@@ -455,21 +467,25 @@ class SeqExp(object):
 
             return SeqExp(new_features, new_classifications, self.metadata, new_seqs)
 
-        elif component.lower() == 'metadata':
+        elif component == 'metadata':
             # merge in new metadata, subsetting other components as necessary, returning new SeqExp
 
-            new_sample_names = self.metadata.index.intersection(right.index)
-            new_metadata_names = self.metadata.columns.intersection(right.columns)
+            if self.metadata is not None:
+                new_sample_names = new_index.intersection(new_index)
+                new_metadata_names = new_columns.intersection(other_columns)
+            else:
+                new_sample_names = new_index
+                new_metadata_names = new_columns
 
             new_metadata = right.loc[new_sample_names, new_metadata_names]
             new_features = self.features.loc[:, new_sample_names]
 
             return SeqExp(new_features, self.classifications, new_metadata, self.seqs)
 
-        elif component.lower() == 'seqs':
+        elif component == 'seqs':
 
-            new_feature_names = self.seqs.index.intersection(right.index)
-            new_seq_names = self.seqs.columns.intersection(right.columns)
+            new_feature_names = new_index
+            new_seq_names = new_columns
 
             new_seqs = right.loc[new_feature_names, new_seq_names]
             new_features = self.features.loc[new_feature_names]
@@ -481,15 +497,14 @@ class SeqExp(object):
 
             return SeqExp(new_features, new_classifications, self.metadata, new_seqs)
 
-        else:
-            raise(ValueError('invalid type for \'component\' argument'))
-
     def concat(self):
         """
         
         :return: 
         """
         pass
+
+    # -------------- other methods -------------- #
 
     def distance(self, metric='braycurtis'):
         """      
@@ -511,7 +526,6 @@ class SeqExp(object):
 
         # return as DistanceMatrix object
         return DistanceMatrix(dist_df, metric=metric)
-
 
     def ordinate(self, method, distance=None, metric=None, *args, **kwargs):
         """
@@ -567,6 +581,8 @@ class SeqExp(object):
                 return ord
         else:
             raise(ValueError('must supply a valid ordination method.'))
+
+    # -------------- plotting -------------- #
 
     def plot_bar(self, **kwargs):
         """Plots bar chart using matplotlib."""
@@ -629,104 +645,6 @@ class SeqExp(object):
     #
     #     return sxp
 
-#
-# class FeatureTable(pd.DataFrame):
-#     """
-#     Feature table object.
-#
-#     A feature table consists of counts of features per class. An example of this is the `sample x species` OTU table
-#     used to describe abundances across different samples.
-#
-#     This object should not be manipulated directly, but rather as part of a SeqExp object.
-#
-#     """
-#
-#     @property
-#     def _constructor(self):
-#         return FeatureTable
-#
-#     @property
-#     def _constructor_sliced(self):
-#         return FeatureSeries
-#
-#     def __init__(self, *args, **kwargs):
-#         super(FeatureTable, self).__init__(*args, **kwargs)
-#
-#     @staticmethod
-#     def read_mothur_shared_file(shared_file):
-#         """Reads in and formats a Mothur shared file."""
-#
-#         feature_data = pd.read_table(shared_file)
-#         feature_data = feature_data.drop(['label', 'numOtus'], axis=1)
-#         feature_data = feature_data.set_index('Group').transpose()
-#
-#         return FeatureTable(feature_data)
-#
-#
-# class FeatureSeries(pd.Series):
-#
-#     @property
-#     def _constructor(self):
-#         return FeatureSeries
-#
-#     @property
-#     def _constructor_expanddim(self):
-#         return FeatureTable
-#
-#     def __init__(self, *args, **kwargs):
-#         super(FeatureSeries, self).__init__(*args, **kwargs)
-#
-#
-# class ClassificationTable(pd.DataFrame):
-#     """
-#     Classification table object.
-#
-#     A classification table contains tabulated classifications of the features within a FeatureTable object. An example
-#     of this is taxanomic classifications of the OTUs in an OTU table.
-#
-#     ..note:: Classifications can contain multiple ranks.
-#
-#     """
-#
-#     @property
-#     def _constructor(self):
-#         return ClassificationTable
-#
-#     def __init__(self, *args, **kwargs):
-#         super(ClassificationTable, self).__init__(*args, **kwargs)
-#
-#     @staticmethod
-#     def read_mothur_constaxonomy_file(constaxonomy_file):
-#         """Reads in and formats a Mother constaxonomy file."""
-#
-#         classification_data = pd.read_table(constaxonomy_file)
-#         classifications = classification_data['Taxonomy']
-#         classifications = classifications.str.split(';', expand=True).drop(6, axis=1)
-#         classifications.columns = list(range(1, 7))
-#         features = classification_data['OTU']
-#         classification_data = pd.concat([features, classifications], axis=1)
-#         classification_data = classification_data.set_index('OTU')
-#
-#         return ClassificationTable(classification_data)
-#
-#
-# class SampleDataTable(pd.DataFrame):
-#     """
-#     Sample data table.
-#
-#     A table of data that accompanies the classes (columns) in a FeatureTable object. For example, if the classes in the
-#     FeatureTable are different samples, the sample data may include different locations, geophysical parameters, etc
-#     for each sample.
-#
-#     """
-#
-#     @property
-#     def _constructor(self):
-#         return SampleDataTable
-#
-#     def __init__(self, *args, **kwargs):
-#         super(SampleDataTable, self).__init__(*args, **kwargs)
-#
 
 # register advanced indexing methods to SeqExp object
 for _name in get_indexer_mappings():

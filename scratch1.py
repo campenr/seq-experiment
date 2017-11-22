@@ -111,6 +111,10 @@ print(sxp)
 # print(feats_.loc[:'feature_2':].index)
 # print(feats_.iloc[:3].index)
 
-print('################################')
-print(sxp[::2])
-print(sxp['class_0'])
+# print('################################')
+# print(sxp[::2])
+# print(sxp['class_0'])
+
+# sxp4 = sxp[['class_0', 'class_1']]
+sxp4 = sxp[['class_1', 'class_0']]
+print(sxp4.features)
