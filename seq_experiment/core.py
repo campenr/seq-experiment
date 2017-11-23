@@ -128,7 +128,7 @@ class SeqExp(object):
         if self.seqs is not None:
             self.seqs.index = feature_names
 
-    # -------------- ??? -------------- #
+    # -------------- _ -------------- #
 
     def __str__(self):
         """."""
@@ -213,16 +213,6 @@ class SeqExp(object):
 
     # -------------- convenience methods -------------- #
 
-
-    def sample(self, n=None, frac=None, replace=False, weights=None,
-               random_state=None, axis=None):
-        """
-        Returns a random sample of items from an axis of object.
-
-        """
-
-        pass
-
     def relabund(self, scaling_factor=1):
         """
         Returns a new object with abundances converted to relative abundances.
@@ -240,44 +230,6 @@ class SeqExp(object):
         # return a new object
         return SeqExp(features=new_features, classifications=self.classifications, metadata=self.metadata,
                       seqs=self.seqs)
-
-    def subset(self, by, items):
-        """
-        Subsets SeqExp by either features or samples.
-        
-        :param by: whether to subset by features or samples
-        :type by: str, one of either `features` or `samples`
-        :param items: list of features or samples to subset by
-        :type items: list
-        
-        :return: new SeqExp object subset by features or samples
-         
-        ..note:: any features whose sum across all samples becomes zero following subsetting are removed
-        
-        """
-
-        # subset the feature table in the correct dimensions
-        if by == 'features':
-            new_features = self.features.loc[items]
-        elif by == 'samples':
-            new_features = self.features.loc[:, items]
-        else:
-            raise(ValueError('by should be one of \'features\' or \'samples\''))
-
-        # can drop any features that now have zero abundance across all remaining samples
-        new_features = new_features[new_features.max(axis=1) > 0]
-        
-        if self.classifications is not None:
-            new_classifications = self.classifications.loc[new_features.index]
-        else:
-            new_classifications = None
-
-        if self.metadata is not None:
-            new_metadata = self.metadata.loc[new_features.columns]
-        else:
-            new_metadata = None
-
-        return SeqExp(features=new_features, classifications=new_classifications, metadata=new_metadata)
 
     def drop(self, by, items):
         """
@@ -361,10 +313,10 @@ class SeqExp(object):
         """
         Merges this SeqExp with another SeqExp or SeqExp component.
         
-        Provides similar functionality to the pandas DataFrame.merge or phyloseq's merge_phyloseq.
+        Provides similar functionality to phyloseq's `merge_phyloseq`.
         
-        This method takes the input SeqExp or components thereof and returns the features, classifications, and metadata
-        that matches across all the supplied objects.
+        This method takes the input SeqExp or components thereof and returns and returns a new SeqExp. When merged, the
+        index and columns of the component specified by the `right` argument are used
         
         :param right: SeqExp or component data frame to merge with this SeqExp object
         :type right: SeqExp, pd.DataFrame, or pd.DataFrame like object
