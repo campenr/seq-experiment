@@ -7,6 +7,7 @@ from matplotlib.colors import LinearSegmentedColormap
 from collections import OrderedDict
 
 from seq_experiment.indexing import get_indexer_mappings, _Indexer
+from seq_experiment.plotting import plot_seq_experiment
 
 from seq_experiment.ordination import pcoa, nmds, meta_nmds
 from seq_experiment.distance import DistanceMatrix
@@ -316,7 +317,8 @@ class SeqExp(object):
         Provides similar functionality to phyloseq's `merge_phyloseq`.
         
         This method takes the input SeqExp or components thereof and returns and returns a new SeqExp. When merged, the
-        index and columns of the component specified by the `right` argument are used
+        index and columns of the component specified by the `right` argument are used to subset any components of the
+        `left` SeqExp appropriately.
         
         :param right: SeqExp or component data frame to merge with this SeqExp object
         :type right: SeqExp, pd.DataFrame, or pd.DataFrame like object
@@ -536,67 +538,13 @@ class SeqExp(object):
 
     # -------------- plotting -------------- #
 
-    def plot_bar(self, **kwargs):
-        """Plots bar chart using matplotlib."""
+    def plot(self, *args, **kwargs):
+        """
+        Plots the abundances within the feature table, grouped by class.
 
-        # create custom cmap
-        paired_cmap = get_cmap('Paired')
+        """
 
-        paired_cols = []
-        for i in paired_cmap.colors:
-            rgbs = []
-            for j in i:
-                rgbs.append(j)
-
-            paired_cols.append(rgbs)
-
-        cust_cmap = LinearSegmentedColormap.from_list('custom_map', paired_cols)
-
-        # specify our custom arguments for plotting bar charts
-        default_args = {
-            'stacked': True,
-            'cmap': cust_cmap,
-            'width': 0.8,
-            'linewidth': 1,
-            'edgecolor': 'black',
-        }
-
-        # override kind if specified by the user
-        kwargs['kind'] = 'bar'
-
-        # TODO: allow for plotting subplots in a way that visually makes more sense
-
-        # allow user defined kwargs to override our defaults
-        for arg, value in default_args.items():
-            if arg not in kwargs.keys():
-                kwargs[arg] = value
-
-        ax = self.features.transpose().plot(**kwargs)
-
-        # tidy legend
-        ax.legend(loc='center left', bbox_to_anchor=(1.0, 0.5))
-
-        return ax
-
-    # @staticmethod
-    # def import_mothur(mothur_shared_file, mothur_constaxonomy_file=None):
-    #     """
-    #     Creates SeqExp object from mothur output files.
-    #
-    #     :param mothur_shared_file:
-    #     :param mothur_constaxonomy_file:
-    #     :return:
-    #     """
-    #
-    #     feature_data = FeatureTable.read_mothur_shared_file(mothur_shared_file)
-    #     sxp = SeqExp(feature_data)
-    #
-    #     if mothur_constaxonomy_file is not None:
-    #         classification_data = ClassificationTable.read_mothur_constaxonomy_file(mothur_constaxonomy_file)
-    #         sxp = sxp.merge(classification_data)
-    #
-    #     return sxp
-
+        return plot_seq_experiment(self, *args, **kwargs)
 
 # register advanced indexing methods to SeqExp object
 for _name in get_indexer_mappings():
