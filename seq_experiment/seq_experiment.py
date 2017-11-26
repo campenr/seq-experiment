@@ -1,20 +1,21 @@
-import numpy as np
-import pandas as pd
-import matplotlib.pyplot as plt
-from matplotlib.cm import get_cmap
-from matplotlib.colors import LinearSegmentedColormap
+"""
+Copyright (c) 2017, Richard Campen
+All rights reserved.
+Licensed under the Modified BSD License.
+For full license terms see LICENSE.txt
+
+"""
 
 from collections import OrderedDict
-
-from seq_experiment.indexing import get_indexer_mappings, _Indexer
-from seq_experiment.plotting import plot_seq_experiment
-
-from seq_experiment.ordination import pcoa, nmds, meta_nmds
-from seq_experiment.distance import DistanceMatrix
+from copy import deepcopy
+import functools
+import pandas as pd
 from scipy.spatial.distance import pdist, squareform
 
-import functools
-from copy import deepcopy
+from seq_experiment.distance import DistanceMatrix
+from seq_experiment.indexing import get_indexer_mappings, _Indexer
+from seq_experiment.ordination import pcoa, nmds, meta_nmds
+from seq_experiment.plotting import plot_seq_experiment
 
 
 class SeqExp(object):

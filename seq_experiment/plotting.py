@@ -1,3 +1,11 @@
+"""
+Copyright (c) 2017, Richard Campen
+All rights reserved.
+Licensed under the Modified BSD License.
+For full license terms see LICENSE.txt
+
+"""
+
 
 def plot_seq_experiment(sxp, *args, **kwargs):
 
