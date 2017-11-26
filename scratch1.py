@@ -69,66 +69,66 @@ sxp = SeqExp(features=test_features, classifications=test_classifications, metad
 
 print(sxp)
 
-print('\n#################################\n')
-print(sxp.fx['feature_0'])
-print(sxp.fx['feature_0'].features)
-print(sxp.fx['feature_0'].classifications)
-
-print('\n#################################\n')
-print(sxp.fx[0])
-
-print('\n#################################\n')
-print(sxp.fx['feature_1':'feature_3'])
-print(sxp.fx['feature_1':'feature_3'].features)
-print(sxp.fx['feature_1':'feature_3'].classifications)
-
-print('\n#################################\n')
-print(sxp.fx['feature_5', 'class_2'])
-print(sxp.fx['feature_5', 'class_2'].features)
-print(sxp.fx['feature_5', 'class_2'].classifications)
-
-print('\n#################################\n')
-print(sxp.fx[:,:])
-
-print('\n#################################\n')
-print(sxp.fx[:, 1])
-
-print('\n#################################\n')
-print(sxp.fx[:, sxp.metadata['metadata_0'] < 50].metadata)
-print(sxp.fx[:, sxp.metadata['metadata_0'] > 50].metadata)
-
-print(sxp.metadata)
-
-print('\n#################################\n')
-print(sxp.fx[:, sxp.metadata['metadata_0'] > 50])
-print(sxp.mx[sxp.metadata['metadata_0'] > sxp.metadata['metadata_0'].mean()])
-print(sxp.mx[:, sxp.metadata.loc['class_0'] == 'a'])
-
-print('\n#################################\n')
-print(sxp.fx[sxp.features['class_0'] > 500])
-
-print('\n#################################\n')
-print(sxp.fx[:, sxp.features.loc['feature_0'] > 500].features)
-print(sxp.fx[:, sxp.features.loc['feature_0'] < 500].features)
-
-
-print(sxp.mx[:, sxp.metadata.loc['class_0'] == 'a'])
-sxp2 = sxp.fx['feature_1':'feature_3']
-
-
-print(sxp2)
-
-feats_ = sxp.features
-
-print(feats_.loc[:'feature_2':].index)
-print(feats_.iloc[:3].index)
-
-print('################################')
-print(sxp[::2])
-print(sxp['class_0'])
-
-sxp4 = sxp[['class_0', 'class_1']]
-sxp4 = sxp[['class_1', 'class_0']]
-print(sxp4.features)
-
-print(sxp.metadata)
+# print('\n#################################\n')
+# print(sxp.fx['feature_0'])
+# print(sxp.fx['feature_0'].features)
+# print(sxp.fx['feature_0'].classifications)
+#
+# print('\n#################################\n')
+# print(sxp.fx[0])
+#
+# print('\n#################################\n')
+# print(sxp.fx['feature_1':'feature_3'])
+# print(sxp.fx['feature_1':'feature_3'].features)
+# print(sxp.fx['feature_1':'feature_3'].classifications)
+#
+# print('\n#################################\n')
+# print(sxp.fx['feature_5', 'class_2'])
+# print(sxp.fx['feature_5', 'class_2'].features)
+# print(sxp.fx['feature_5', 'class_2'].classifications)
+#
+# print('\n#################################\n')
+# print(sxp.fx[:,:])
+#
+# print('\n#################################\n')
+# print(sxp.fx[:, 1])
+#
+# print('\n#################################\n')
+# print(sxp.fx[:, sxp.metadata['metadata_0'] < 50].metadata)
+# print(sxp.fx[:, sxp.metadata['metadata_0'] > 50].metadata)
+#
+# print(sxp.metadata)
+#
+# print('\n#################################\n')
+# print(sxp.fx[:, sxp.metadata['metadata_0'] > 50])
+# print(sxp.mx[sxp.metadata['metadata_0'] > sxp.metadata['metadata_0'].mean()])
+# print(sxp.mx[:, sxp.metadata.loc['class_0'] == 'a'])
+#
+# print('\n#################################\n')
+# print(sxp.fx[sxp.features['class_0'] > 500])
+#
+# print('\n#################################\n')
+# print(sxp.fx[:, sxp.features.loc['feature_0'] > 500].features)
+# print(sxp.fx[:, sxp.features.loc['feature_0'] < 500].features)
+#
+#
+# print(sxp.mx[:, sxp.metadata.loc['class_0'] == 'a'])
+# sxp2 = sxp.fx['feature_1':'feature_3']
+#
+#
+# print(sxp2)
+#
+# feats_ = sxp.features
+#
+# print(feats_.loc[:'feature_2':].index)
+# print(feats_.iloc[:3].index)
+#
+# print('################################')
+# print(sxp[::2])
+# print(sxp['class_0'])
+#
+# sxp4 = sxp[['class_0', 'class_1']]
+# sxp4 = sxp[['class_1', 'class_0']]
+# print(sxp4.features)
+#
+# print(sxp.metadata)

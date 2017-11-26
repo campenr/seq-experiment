@@ -30,31 +30,33 @@ class _Indexer(object):
 
         self.sxp = deepcopy(sxp)
         self.attr_name = get_indexer_mappings()[name]
+        self.attr = getattr(self.sxp, self.attr_name)
 
     def __getitem__(self, key):
 
-        # get attribute matching given indexer
-        attr = getattr(self.sxp, self.attr_name)
-
-        # subset attribute using `key` using label based indexing first, fallback to index based if it fails
+        # subset the attribute by `key` using label based indexing first, fallback to integer based if it fails
         try:
-            new_attr = attr.loc[key]
+            new_attr = self.attr.loc[key]
         except TypeError:
-            new_attr = attr.iloc[key]
+            new_attr = self.attr.iloc[key]
 
         # conditionally correct type of attribute if dimensionality has been reduced during subset
-        # assumes attr is pd.DataFrame or pd.DataFrame like object, with _constructor_sliced method implemented
-        if isinstance(new_attr, type(attr)):
+        # assumes attr is pd.DataFrame or pd.DataFrame like object, with a `_constructor_sliced` method implemented
+        if isinstance(new_attr, type(self.attr)):
+            # dimensionality preserved after subset
             pass
-        elif isinstance(new_attr, attr._constructor_sliced):
+        elif isinstance(new_attr, self.attr._constructor_sliced):
+            # dimensionality reduced by 1, need to restore to original ndim
             new_attr = pd.DataFrame(new_attr)
         else:
+            # single value returned, likely because subset returned a single cell, need to restore to original ndim
             new_attr = pd.DataFrame([new_attr], index=[key[0]], columns=[key[1]])
 
-        # may need to correct data orientation
-        if not new_attr.index.isin(attr.index).all():
+        # conditionally restore correct data orientation
+        # if dimensionality was changed during subset, orientation may have also been changed
+        if not new_attr.index.isin(self.attr.index).all():
             new_attr = new_attr.transpose()
 
-        self.sxp = self.sxp.merge(right=new_attr, component=self.attr_name)
-
-        return self.sxp
+        # merge in the subset attribute to a copy of the SeqExp before returning it
+        # this has the effect of cascading the subset to the other attributes of the SeqExp object
+        return self.sxp.merge(right=new_attr, component=self.attr_name)

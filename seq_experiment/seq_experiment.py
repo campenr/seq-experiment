@@ -15,7 +15,7 @@ from scipy.spatial.distance import pdist, squareform
 from seq_experiment.distance import DistanceMatrix
 from seq_experiment.indexing import get_indexer_mappings, _Indexer
 from seq_experiment.ordination import pcoa, nmds, meta_nmds
-from seq_experiment.plotting import plot_seq_experiment
+from seq_experiment.plotting import plot_abundance
 
 
 class SeqExp(object):
@@ -105,18 +105,6 @@ class SeqExp(object):
     # -------------- convenience getters/setters -------------- #
 
     @property
-    def sample_names(self):
-        return self.features.columns
-
-    @sample_names.setter
-    def sample_names(self, sample_names):
-
-        self.features.columns = sample_names
-
-        if self.metadata is not None:
-            self.metadata.index = sample_names
-
-    @property
     def feature_names(self):
         return self.features.index
 
@@ -129,6 +117,18 @@ class SeqExp(object):
             self.classifications.index = feature_names
         if self.seqs is not None:
             self.seqs.index = feature_names
+
+    @property
+    def sample_names(self):
+        return self.features.columns
+
+    @sample_names.setter
+    def sample_names(self, sample_names):
+
+        self.features.columns = sample_names
+
+        if self.metadata is not None:
+            self.metadata.index = sample_names
 
     # -------------- _ -------------- #
 
@@ -226,12 +226,14 @@ class SeqExp(object):
         
         """
 
-        # calculate feature abundance relative to total sample abundance
-        new_features = self.features.div(self.features.sum(axis=0)).multiply(scaling_factor)
+        # make copy of SeqExp
+        new_sxp = deepcopy(self)
 
-        # return a new object
-        return SeqExp(features=new_features, classifications=self.classifications, metadata=self.metadata,
-                      seqs=self.seqs)
+        # calculate feature abundance relative to total sample abundance
+        new_sxp.features = new_sxp.features.div(new_sxp.features.sum(axis=0)).multiply(scaling_factor)
+
+        # return the new object
+        return new_sxp
 
     def drop(self, by, items):
         """
@@ -545,7 +547,7 @@ class SeqExp(object):
 
         """
 
-        return plot_seq_experiment(self, *args, **kwargs)
+        return plot_abundance(self, *args, **kwargs)
 
 # register advanced indexing methods to SeqExp object
 for _name in get_indexer_mappings():
