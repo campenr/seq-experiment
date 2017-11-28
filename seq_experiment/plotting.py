@@ -14,38 +14,122 @@ import matplotlib.pyplot as plt
 from matplotlib.cm import get_cmap
 from matplotlib.colors import LinearSegmentedColormap
 
+from seq_experiment.indexing import get_indexer_mappings
+
 
 def _make_segmented_cmap(cmap):
+    """
+    Creates a segmented color map.
 
-    cmap_colors = [[rgb for rgb in color] for color in get_cmap(cmap).colors]
+    Segmented color maps are more useful for displaying abundance data than non-segmented as they provide
+    more dramatic shifts in color between each color.
 
-    return LinearSegmentedColormap.from_list(cmap, cmap_colors)
+    """
 
+    cmap_ = get_cmap(cmap)
 
-def plot_abundance(sxp, axis=0, facet_by=None, **kwargs):
-
-    # get data for plotting
-    data_array = []
-
-    if facet_by is None:
-        data_array.append(sxp.features)
+    if not isinstance(cmap_, LinearSegmentedColormap):
+        cmap_colors = [[rgb for rgb in color] for color in cmap_.colors]
+        return LinearSegmentedColormap.from_list(cmap, cmap_colors)
     else:
-        # if facet_by was specified we need to split the data by the values in the matching metadata column
-        facet_col = sxp.metadata[facet_by]
-        for value in set(facet_col):
-            data_array.append(sxp.mx[getattr(sxp.metadata, facet_by) == value].features)
+        # cmap is already a LinearSegmentedColor map so we don't need to convert it
+        return cmap_
 
-    # conditionally transpose the data depending what axis we are plotting
+
+def plot_abundance(sxp, axis=0, facet_by=None, color_by=None, cmap='Paired', **kwargs):
+
+    # need to check that facet_by and color_by arguments are valid, check axis argument simultaneously
+    facet_attr = None
+    color_attr = None
     if axis == 0:
-        pass
+        # feature abundances grouped by row (features)
+        # can facet by metadata and color by classifications
+        if facet_by is not None and facet_by not in sxp.metadata.columns:
+            raise IndexError('%s not in metadata.columns' % facet_by)
+        if color_by is not None and color_by not in sxp.classifications.columns:
+            raise IndexError('%s not in classifications.columns' % color_by)
+        facet_attr = 'metadata'
+        color_attr = 'classifications'
     elif axis == 1:
-        for data_ in data_array:
-            data_ = data_.transpose()
+        # feature abundances grouped by columns (class/sample)
+        # can facet by classification and color by metadata
+        if facet_by is not None and facet_by not in sxp.classifications.columns:
+            raise IndexError('%s not in classifications.columns' % facet_by)
+        if color_by is not None and color_by not in sxp.metadata.columns:
+            raise IndexError('%s not in metadata.columns' % color_by)
+        facet_attr = 'classifications'
+        color_attr = 'metadata'
     else:
         raise ValueError('axis should be either 0 or 1')
 
-    # setup plotting environment
-    # set custom plotting parameters if user has not specified them
+    # get data for plotting, conditionally split into separate DataFrames
+    data_array = []
+    if facet_by is None:
+        # no need to subset, append abundance data intact as tuple along with name of x axis
+        if axis == 0:
+            data_array.append(('features', sxp.features))
+        elif axis == 1:
+            data_array.append(('classes', sxp.features))
+    else:
+        # if facet_by was specified we need to split the data by the values in the matching attribute column
+        # get column values and determine the set; we do this manually rather than use `set` to preserve order
+        facet_col = getattr(sxp, facet_attr)[facet_by]
+        facet_values = list()
+        for value in facet_col:
+            if value not in facet_values:
+                facet_values.append(value)
+
+        # get indexer to use
+        indexers = get_indexer_mappings()
+        indexer = None
+        for k, v in indexers.items():
+            if v == facet_attr:
+                indexer = getattr(sxp, k)
+
+        # subset data
+        for value in facet_values:
+            data_array.append((value, indexer[facet_col == value].features))
+
+    # conditionally transpose the data depending what axis we are plotting along the x axis
+    y_col = sxp.features.index
+    if axis == 1:
+        data_array = [(data[0], data[1].transpose()) for data in data_array]
+        y_col = sxp.features.columns
+
+    # calculate colors for plotting
+    if color_by is None:
+        # color each item in the main axis separately
+        if axis == 0:
+            # color each feature separately
+            color_col = sxp.features.index
+        elif axis == 1:
+            # color each class separately
+            color_col = sxp.features.columns
+    else:
+        # get user specific column to color by
+        color_col = getattr(sxp, color_attr)[color_by]
+
+    # get column values and determine the set; we do this manually rather than use `set` to preserve order
+    color_values = list()
+    for value in color_col:
+        if value not in color_values:
+            color_values.append(value)
+    num_colors = len(color_values)
+
+    # convert cmap to one suited for the kind of bar chart we're using
+    cmap = _make_segmented_cmap(cmap)
+
+    # format cmap based on the number of separate color values in the column to color by
+    colors = list(iter(cmap(np.linspace(0, 1, num_colors))))
+    if len(colors) != len(color_col):
+        # not a 1-1 ratio between colors and items to color so need to expand the colors array to match
+        color_counts = Counter(color_col)
+        new_colors = list()
+        for index, color in enumerate(color_values):
+            new_colors.extend(repeat(colors[index], color_counts[color]))
+        colors = new_colors
+
+    # setup plotting environment and set custom plotting defaults if user has not specified them
     default_args = {
         'linewidth': 1,
         'edgecolor': 'black',
@@ -59,18 +143,27 @@ def plot_abundance(sxp, axis=0, facet_by=None, **kwargs):
         raise ValueError('no data for plotting')
     elif len(data_array) == 1:
         # basic plotting with single axis
+        data = data_array[0]
         fig, ax = plt.subplots()
-        ax = plot_bars(data=data_array[0], ax=ax, **kwargs)
+        ax = plot_bars(data=data[1], ax=ax, colors=colors, title=data[0], **kwargs)
+        # add legend
+        legend = ax.legend(y_col, frameon=True, loc='center left', bbox_to_anchor=(1.0, 0.5))
+
     else:
         # faceted plotting with multiple axis
-        fig, ax = plt.subplots(nrows=1, ncols=len(data_array))
+        fig, ax = plt.subplots(nrows=1, ncols=len(data_array), sharey=True)
         for i in range(len(data_array)):
-            ax[i] = plot_bars(data=data_array[i], ax=ax[i], **kwargs)
+            data = data_array[i]
+            ax[i] = plot_bars(data=data[1], ax=ax[i], colors=colors, title=data[0], **kwargs)
+            # conditionally trim colors for next iteration
 
-    return ax
+        # add legend
+        legend = ax[-1].legend(y_col, frameon=True, loc='center left', bbox_to_anchor=(1.0, 0.5))
+
+        return ax
 
 
-def plot_bars(data, stacked=True, ax=None, color_by=None, cmap='Paired', **kwargs):
+def plot_bars(data, stacked=True, ax=None, colors=None, title='', **kwargs):
 
     x = data.columns
     y = data.index
@@ -78,100 +171,65 @@ def plot_bars(data, stacked=True, ax=None, color_by=None, cmap='Paired', **kwarg
     len_x = len(x)
     len_y = len(y)
 
-    print('####')
-    print('len_x: ', len_x)
-    print('len_y: ', len_y)
+    # setup plotting constants
+    x_indexes = np.arange(len_x)
+    width = kwargs.pop('width', 0.8)
+    if not stacked:
+        width = width / len_y
+    bottom = None
 
-#     # sort colors
-#     # convert cmap to one suited for the kind of bar chart we're using
-#     cmap = _make_segmented_cmap(cmap)
+    # iterate over the x columns
+    for index, col_name in enumerate(y):
+
+        # get the column data and the position where to plot that data
+        col_data = data.loc[col_name]
+
+        # conditionally bump the location of where to plot the bars
+        # needed if plotting multiple bars per x item when plotting stacked bars
+        if stacked:
+            x_pos = x_indexes
+        else:
+            x_pos = x_indexes + (width * index)
+
+        # generate bars
+        bars = ax.bar(x_pos, height=col_data, width=width, bottom=bottom, color=colors[index], **kwargs)
+
+        # if creating stacked bar charts we need to increment the bottom for the next bars by the height of the current
+        if stacked:
+            if bottom is None:
+                bottom = col_data.copy(deep=True).values
+            else:
+                # on first iteration we need to set the bottom values for the first time
+                bottom += col_data.values
+
+    # tidy axes
+    if not stacked:
+        x_tick_loc = (x_indexes - width) + (len_y * width / 2)
+    else:
+        x_tick_loc = x_indexes
+    ax.set_xticks(x_tick_loc)
+    # expect long labels so rotate them 90 degrees
+    ax.set_xticklabels(x, rotation=90)
+    ax.set_title(title)
+
+    # TODO: fix sizing of figure
+    ## -- FROM SEABORN/AXISGRID.PY -- ##
+#     # Calculate and set the new width of the figure so the legend fits
+#     legend_width = figlegend.get_window_extent().width / self.fig.dpi
+#     figure_width = self.fig.get_figwidth()
+#     self.fig.set_figwidth(figure_width + legend_width)
 #
-#     # check what kind of colors argument was passed
-#     # if colors is None plot using different color per feature
-#     if color_by is None:
-#         color_groups = x
-#         len_color_groups = len_x
-#     else:
-#         color_groups = set(color_by)
-#         len_color_groups = len(list(set(color_groups)))
+#     # Draw the plot again to get the new transformations
+#     self.fig.draw(self.fig.canvas.get_renderer())
 #
-#     # format cmap based on the number of separate color groups specified in `color_by`
-#     _colors = list(iter(cmap(np.linspace(0, 1, len_color_groups))))
-#     if len(_colors) == len_x:
-#         pass
-#     elif len(_colors) < len_x and len_x % len(_colors) == 0:
-#         color_counts = Counter(color_by)
-#         new_colors = []
-#         for index, color in enumerate(color_groups):
-#             new_colors.extend(repeat(_colors[index], color_counts[color]))
-#         _colors = new_colors
-#     else:
-#         raise IndexError('length of colors must be equal to the number of features, or a multiple thereof')
+#     # Now calculate how much space we need on the right side
+#     legend_width = figlegend.get_window_extent().width / self.fig.dpi
+#     space_needed = legend_width / (figure_width + legend_width)
+#     margin = .04 if self._margin_titles else .01
+#     self._space_needed = margin + space_needed
+#     right = 1 - self._space_needed
 #
-#     # setup plotting constants
-#     x_indexes = np.arange(len_x)
-#     width = kwargs.pop('width', 0.8)
-#     if not stacked:
-#         width = width / len_y
-#     bottom = None
-#
-#     # iterate over the x columns
-#     for index, col_name in enumerate(y):
-#
-#         # get the column data and the position where to plot that data
-#         col_data = data.loc[col_name]
-#
-#         # conditionally bump the location of where to plot the bars
-#         # needed if plotting multiple bars per x item when plotting stacked bars
-#         if stacked:
-#             x_pos = x_indexes
-#         else:
-#             x_pos = x_indexes + (width * index)
-#
-#         color_ = _colors[index]
-#
-#         # generate bars
-#         bars = ax.bar(x_pos, height=col_data, width=width, bottom=bottom, color=color_, **kwargs)
-#
-#         # if creating stacked bar charts we need to increment the bottom for the next bars by the height of the current
-#         if stacked:
-#             if bottom is None:
-#                 bottom = col_data.copy(deep=True).values
-#             else:
-#                 # on first iteration we need to set the bottom values for the first time
-#                 bottom += col_data.values
-#
-#     # tidy axes
-#     if not stacked:
-#         x_tick_loc = (x_indexes - width) + (len_y * width / 2)
-#     else:
-#         x_tick_loc = x_indexes
-#     ax.set_xticks(x_tick_loc)
-#     # expect long labels so rotate them 90 degrees
-#     ax.set_xticklabels(x, rotation=90)
-#
-#     # add legend
-#     legend = ax.legend(y, frameon=True, loc='center left', bbox_to_anchor=(1.0, 0.5))
-#
-#     # TODO: fix sizing of figure
-#     ## -- FROM SEABORN/AXISGRID.PY -- ##
-# #     # Calculate and set the new width of the figure so the legend fits
-# #     legend_width = figlegend.get_window_extent().width / self.fig.dpi
-# #     figure_width = self.fig.get_figwidth()
-# #     self.fig.set_figwidth(figure_width + legend_width)
-# #
-# #     # Draw the plot again to get the new transformations
-# #     self.fig.draw(self.fig.canvas.get_renderer())
-# #
-# #     # Now calculate how much space we need on the right side
-# #     legend_width = figlegend.get_window_extent().width / self.fig.dpi
-# #     space_needed = legend_width / (figure_width + legend_width)
-# #     margin = .04 if self._margin_titles else .01
-# #     self._space_needed = margin + space_needed
-# #     right = 1 - self._space_needed
-# #
-# #     # Place the subplot axes to give space for the legend
-# #     self.fig.subplots_adjust(right=right)
-#
-#     return ax
-    return
+#     # Place the subplot axes to give space for the legend
+#     self.fig.subplots_adjust(right=right)
+
+    return ax
