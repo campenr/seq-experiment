@@ -13,6 +13,7 @@ import matplotlib.pyplot as plt
 
 from matplotlib.cm import get_cmap
 from matplotlib.colors import LinearSegmentedColormap
+import matplotlib.patches as mpatches
 
 from seq_experiment.indexing import get_indexer_mappings
 
@@ -36,7 +37,7 @@ def _make_segmented_cmap(cmap):
         return cmap_
 
 
-def plot_abundance(sxp, axis=0, facet_by=None, color_by=None, cmap='Paired', **kwargs):
+def plot_abundance(sxp, axis=0, facet_by=None, color_by=None, cmap='Paired', figsize=None, **kwargs):
 
     # need to check that facet_by and color_by arguments are valid, check axis argument simultaneously
     facet_attr = None
@@ -91,10 +92,10 @@ def plot_abundance(sxp, axis=0, facet_by=None, color_by=None, cmap='Paired', **k
             data_array.append((value, indexer[facet_col == value].features))
 
     # conditionally transpose the data depending what axis we are plotting along the x axis
-    y_col = sxp.features.index
+    y_col = sxp.features.columns
     if axis == 1:
         data_array = [(data[0], data[1].transpose()) for data in data_array]
-        y_col = sxp.features.columns
+        y_col = sxp.features.index
 
     # calculate colors for plotting
     if color_by is None:
@@ -120,14 +121,14 @@ def plot_abundance(sxp, axis=0, facet_by=None, color_by=None, cmap='Paired', **k
     cmap = _make_segmented_cmap(cmap)
 
     # format cmap based on the number of separate color values in the column to color by
-    colors = list(iter(cmap(np.linspace(0, 1, num_colors))))
+    colors_set = list(iter(cmap(np.linspace(0, 1, num_colors))))
+    colors = colors_set
     if len(colors) != len(color_col):
         # not a 1-1 ratio between colors and items to color so need to expand the colors array to match
         color_counts = Counter(color_col)
-        new_colors = list()
+        colors = list()
         for index, color in enumerate(color_values):
-            new_colors.extend(repeat(colors[index], color_counts[color]))
-        colors = new_colors
+            colors.extend(repeat(colors_set[index], color_counts[color]))
 
     # setup plotting environment and set custom plotting defaults if user has not specified them
     default_args = {
@@ -138,29 +139,84 @@ def plot_abundance(sxp, axis=0, facet_by=None, color_by=None, cmap='Paired', **k
         if arg not in kwargs.keys():
             kwargs[arg] = value
 
+    # calculate default figure size
+    scale = 5
+    height = 1 * scale
+    width = len(y_col)
+
+    if figsize is None:
+        figsize = (width, height)
+
     # create plotting area
     if len(data_array) == 0:
         raise ValueError('no data for plotting')
     elif len(data_array) == 1:
         # basic plotting with single axis
         data = data_array[0]
-        fig, ax = plt.subplots()
+        fig, ax = plt.subplots(figsize=figsize)
         ax = plot_bars(data=data[1], ax=ax, colors=colors, title=data[0], **kwargs)
+
         # add legend
-        legend = ax.legend(y_col, frameon=True, loc='center left', bbox_to_anchor=(1.0, 0.5))
+        # legend = ax.legend(y_col)
 
     else:
+
+        print([len(data[1].columns) for data in data_array])
+
         # faceted plotting with multiple axis
-        fig, ax = plt.subplots(nrows=1, ncols=len(data_array), sharey=True)
+        fig, ax = plt.subplots(nrows=1, ncols=len(data_array), sharey=True, figsize=figsize,
+                               gridspec_kw={'width_ratios':[len(data[1].columns) for data in data_array],
+                                            'wspace': 0.05})
         for i in range(len(data_array)):
             data = data_array[i]
             ax[i] = plot_bars(data=data[1], ax=ax[i], colors=colors, title=data[0], **kwargs)
-            # conditionally trim colors for next iteration
 
-        # add legend
-        legend = ax[-1].legend(y_col, frameon=True, loc='center left', bbox_to_anchor=(1.0, 0.5))
+    # add axis labels
+    if facet_by is None:
+        ax.set_ylabel('abundance\n')
+    else:
+        ax[0].set_ylabel('abundance\n')
 
-        return ax
+    # add legend
+    handles = list()
+    labels = list()
+    for i in range(len(color_values)):
+
+        patch_color = colors_set[i]
+        patch_label = color_values[i]
+
+        handles.append(mpatches.Patch(color=patch_color, label=patch_label))
+        labels.append(patch_label)
+
+    # to help with alignment we place the legend on the axes object
+    if facet_by is None:
+        legend = ax.legend(handles, labels, loc='center left', bbox_to_anchor=(1.0, 0.5))
+    else:
+        legend = ax[-1].legend(handles, labels, loc='center left', bbox_to_anchor=(1.0, 0.5))
+
+    # TODO: fix sizing of figure
+    ## -- FROM SEABORN/AXISGRID.PY -- ##
+    # Calculate and set the new width of the figure so the legend fits
+    legend_width = legend.get_window_extent().width / fig.dpi
+    figure_width = fig.get_figwidth()
+    fig.set_figwidth(figure_width + legend_width)
+
+    # Draw the plot again to get the new transformations
+    fig.draw(fig.canvas.get_renderer())
+
+    # Now calculate how much space we need on the right side
+    legend_width = legend.get_window_extent().width / fig.dpi
+    space_needed = legend_width / (figure_width + legend_width)
+    margin = .04
+    space_needed = (margin + space_needed) * 1.1
+    right = 1 - space_needed
+
+    # Place the subplot axes to give space for the legend
+    fig.subplots_adjust(right=right)
+
+
+
+    return ax
 
 
 def plot_bars(data, stacked=True, ax=None, colors=None, title='', **kwargs):
@@ -211,25 +267,5 @@ def plot_bars(data, stacked=True, ax=None, colors=None, title='', **kwargs):
     # expect long labels so rotate them 90 degrees
     ax.set_xticklabels(x, rotation=90)
     ax.set_title(title)
-
-    # TODO: fix sizing of figure
-    ## -- FROM SEABORN/AXISGRID.PY -- ##
-#     # Calculate and set the new width of the figure so the legend fits
-#     legend_width = figlegend.get_window_extent().width / self.fig.dpi
-#     figure_width = self.fig.get_figwidth()
-#     self.fig.set_figwidth(figure_width + legend_width)
-#
-#     # Draw the plot again to get the new transformations
-#     self.fig.draw(self.fig.canvas.get_renderer())
-#
-#     # Now calculate how much space we need on the right side
-#     legend_width = figlegend.get_window_extent().width / self.fig.dpi
-#     space_needed = legend_width / (figure_width + legend_width)
-#     margin = .04 if self._margin_titles else .01
-#     self._space_needed = margin + space_needed
-#     right = 1 - self._space_needed
-#
-#     # Place the subplot axes to give space for the legend
-#     self.fig.subplots_adjust(right=right)
 
     return ax

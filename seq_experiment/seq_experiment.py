@@ -290,7 +290,7 @@ class SeqExp(object):
         new_sxp = new_sxp.merge(new_classification_table, component='classifications')
 
         if self.metadata is not None:
-            new_sxp.metadata_table = self.metadata
+            new_sxp.metadata = self.metadata
 
         new_sxp.label = level
 
