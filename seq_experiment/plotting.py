@@ -155,14 +155,7 @@ def plot_abundance(sxp, axis=0, facet_by=None, color_by=None, cmap='Paired', fig
         data = data_array[0]
         fig, ax = plt.subplots(figsize=figsize)
         ax = plot_bars(data=data[1], ax=ax, colors=colors, title=data[0], **kwargs)
-
-        # add legend
-        # legend = ax.legend(y_col)
-
     else:
-
-        print([len(data[1].columns) for data in data_array])
-
         # faceted plotting with multiple axis
         fig, ax = plt.subplots(nrows=1, ncols=len(data_array), sharey=True, figsize=figsize,
                                gridspec_kw={'width_ratios':[len(data[1].columns) for data in data_array],
@@ -214,8 +207,6 @@ def plot_abundance(sxp, axis=0, facet_by=None, color_by=None, cmap='Paired', fig
     # Place the subplot axes to give space for the legend
     fig.subplots_adjust(right=right)
 
-
-
     return ax
 
 
@@ -257,6 +248,12 @@ def plot_bars(data, stacked=True, ax=None, colors=None, title='', **kwargs):
             else:
                 # on first iteration we need to set the bottom values for the first time
                 bottom += col_data.values
+
+    # calculate margins at ends of axis. Default is 5% of the width of the axes, but this makes it
+    # bigger on wider bar charts need to adjust the margin to account for different figure width.
+    # We base the margin size off the bar width so the gaps are consistent.
+    margin = ((1 - width) / 1) / len_x
+    ax.margins(margin)
 
     # tidy axes
     if not stacked:
