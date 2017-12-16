@@ -320,6 +320,19 @@ class SeqExp(object):
 
         """
 
+        # check for merging two SeqExp object first
+        if (type(right) == type(self)) and (component is not None):
+            raise ValueError('can not set component if merging two SeqExp objects')
+        elif (type(right) == type(self)) and (component is None):
+            # recursively merge in each attribute of the SeqExp to be then return new SeqExp
+            new_sxp = deepcopy(self)
+            for attr_name in ['features', 'classifications', 'metadata', 'seqs']:
+                attr = getattr(right, attr_name, None)
+                if attr is not None:
+                    new_sxp = new_sxp.merge(right=attr, component=attr_name, sort_by=sort_by)
+            return new_sxp
+
+        # merging a component into a SeqExp object
         component = component.lower()
         if component not in self._get_components():
             raise ValueError('invalid \'component\'. Must be one of `features`, `classifications`, `metadata`, or '
@@ -327,22 +340,6 @@ class SeqExp(object):
         sort_by = sort_by.lower()
         if sort_by.lower() not in ['left', 'right']:
             raise ValueError('invalid \'sort_by\'. Must be one of `left` or `right`')
-
-        # --- merging with a SeqExp object --- #
-
-        if (type(right) == type(self)) and (component is None):
-            # can only merge two SeqExp objects if component is not set
-
-            # recursively merge in each attribute of the SeqExp to be then return new SeqExp
-            new_sxp = deepcopy(self)
-            for attr_name in ['features', 'classifications', 'metadata', 'seqs']:
-                attr = getattr(right, attr_name, None)
-                if attr is not None:
-                    new_sxp = new_sxp.merge(right=attr, component=attr_name, sort_by=sort_by)
-
-            return new_sxp
-
-        # --- merging with a SeqExp component --- #
 
         # get left side for the merge
         left = getattr(self, component)
@@ -448,6 +445,11 @@ class SeqExp(object):
 
     # -------------- convenience methods -------------- #
 
+    def plot(self, *args, **kwargs):
+        """Plots the abundances within the feature table."""
+
+        return plot_abundance(self, *args, **kwargs)
+
     def relabund(self, scaling_factor=1, by='samples'):
         """
         Returns a new object with abundances converted to relative abundances.
@@ -552,15 +554,6 @@ class SeqExp(object):
         else:
             raise(ValueError('must supply a valid ordination method.'))
 
-    # -------------- plotting -------------- #
-
-    def plot(self, *args, **kwargs):
-        """
-        Plots the abundances within the feature table, grouped by class.
-
-        """
-
-        return plot_abundance(self, *args, **kwargs)
 
 # register advanced indexing methods to SeqExp object
 for _name in get_indexer_mappings():
