@@ -12,12 +12,7 @@ import pandas as pd
 
 def get_indexer_mappings():
 
-    return {
-        'fx': 'features',
-        'cx': 'classifications',
-        'mx': 'metadata',
-        'sx': 'seqs'
-    }
+    return {'loc', 'iloc'}
 
 
 class _Indexer(object):
@@ -29,34 +24,33 @@ class _Indexer(object):
     def __init__(self, name, sxp):
 
         self.sxp = deepcopy(sxp)
-        self.attr_name = get_indexer_mappings()[name]
-        self.attr = getattr(self.sxp, self.attr_name)
+        self.name = name
 
     def __getitem__(self, key):
 
-        # subset the attribute by `key` using label based indexing first, fallback to integer based if it fails
-        try:
-            new_attr = self.attr.loc[key]
-        except TypeError:
-            new_attr = self.attr.iloc[key]
+        # subset features using either loc or iloc
+        if self.name == 'loc':
+            new_features = self.sxp.features.loc[key]
+        elif self.name == 'iloc':
+            new_features = self.sxp.features.iloc[key]
 
-        # conditionally correct type of attribute if dimensionality has been reduced during subset
+        # conditionally correct type of new_features if dimensionality has been reduced during subset
         # assumes attr is pd.DataFrame or pd.DataFrame like object, with a `_constructor_sliced` method implemented
-        if isinstance(new_attr, type(self.attr)):
+        if isinstance(new_features, type(self.sxp.features)):
             # dimensionality preserved after subset
             pass
-        elif isinstance(new_attr, self.attr._constructor_sliced):
+        elif isinstance(new_features, self.self.sxp.features._constructor_sliced):
             # dimensionality reduced by 1, need to restore to original ndim
-            new_attr = pd.DataFrame(new_attr)
+            new_attr = pd.DataFrame(new_features)
         else:
             # single value returned, likely because subset returned a single cell, need to restore to original ndim
-            new_attr = pd.DataFrame([new_attr], index=[key[0]], columns=[key[1]])
+            new_attr = pd.DataFrame([new_features], index=[key[0]], columns=[key[1]])
 
         # conditionally restore correct data orientation
         # if dimensionality was changed during subset, orientation may have also been changed
-        if not new_attr.index.isin(self.attr.index).all():
-            new_attr = new_attr.transpose()
+        if not new_features.index.isin(self.sxp.features.index).all():
+            new_features = new_features.transpose()
 
         # merge in the subset attribute to a copy of the SeqExp before returning it
         # this has the effect of cascading the subset to the other attributes of the SeqExp object
-        return self.sxp.merge(right=new_attr, component=self.attr_name)
+        return self.sxp.merge(right=new_features, component='features')
