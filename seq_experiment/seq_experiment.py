@@ -178,6 +178,8 @@ class SeqExp(object):
 
         return '\n'.join(outputs) + '\n'
 
+    # -------------- subsetting -------------- #
+
     def __getitem__(self, key):
         """
         Subsets the data contained within the SeqExp by columns in the features dataframe.
@@ -211,36 +213,12 @@ class SeqExp(object):
 
         return new_sxp
 
-    # -------------- fancy indexing -------------- #
-
     @classmethod
     def _create_indexer(cls, name, indexer):
         """Create an indexer like _name in the class."""
         if getattr(cls, name, None) is None:
             _indexer = functools.partial(indexer, name)
             setattr(cls, name, property(_indexer))  # , doc=indexer.__doc__))
-
-    # -------------- convenience methods -------------- #
-
-    def relabund(self, scaling_factor=1):
-        """
-        Returns a new object with abundances converted to relative abundances.
-        
-        :param scaling_factor: number to multiple relative abundance values by
-        :type scaling_factor: int or float
-        
-        :return: new SeqExp object with relative abundance values
-        
-        """
-
-        # make copy of SeqExp
-        new_sxp = deepcopy(self)
-
-        # calculate feature abundance relative to total sample abundance
-        new_sxp.features = new_sxp.features.div(new_sxp.features.sum(axis=0)).multiply(scaling_factor)
-
-        # return the new object
-        return new_sxp
 
     def drop(self, by, items):
         """
@@ -323,23 +301,23 @@ class SeqExp(object):
     def merge(self, right, component=None, sort_by='left'):
         """
         Merges this SeqExp with another SeqExp or SeqExp component.
-        
+
         Provides similar functionality to phyloseq's `merge_phyloseq`.
-        
+
         This method takes the input SeqExp or components thereof and returns and returns a new SeqExp. When merged, the
         index and columns of the component specified by the `right` argument are used to subset any components of the
         `left` SeqExp appropriately.
-        
+
         :param right: SeqExp or component data frame to merge with this SeqExp object
         :type right: SeqExp, pd.DataFrame, or pd.DataFrame like object
         :param component: What component the `argument` represents
         :type component: str, one of 'features', 'classifications', or 'metadata'
-        
+
         ..seealso:: to create a SeqExp record from only the component parts using the same process use
         `seq_experiment.concat`.
-        
+
         :return: a new SeqExp object
-        
+
         """
 
         component = component.lower()
@@ -468,7 +446,35 @@ class SeqExp(object):
         """
         pass
 
-    # -------------- other methods -------------- #
+    # -------------- convenience methods -------------- #
+
+    def relabund(self, scaling_factor=1, by='samples'):
+        """
+        Returns a new object with abundances converted to relative abundances.
+
+        :param scaling_factor: number to multiple relative abundance values by
+        :type scaling_factor: int or float
+        :param by: whether to calculate relative abundance within samples or features
+        :type by: str ('samples' or 'features')
+
+        :return: new SeqExp object with relative abundance values
+
+        """
+
+        axis_map = {
+            'samples': (0, 1),
+            'features': (1, 0)
+        }
+
+        # make copy of SeqExp
+        new_sxp = deepcopy(self)
+
+        # calculate feature abundance relative to total sample abundance
+        # note that we sum by the one axis, then divide across the other
+        new_sxp.features = new_sxp.features.div(new_sxp.features.sum(axis=axis_map[by][0]), axis=axis_map[by][1]).multiply(scaling_factor)
+
+        # return the new object
+        return new_sxp
 
     def distance(self, metric='braycurtis'):
         """      
