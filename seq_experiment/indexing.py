@@ -39,12 +39,12 @@ class _Indexer(object):
         if isinstance(new_features, type(self.sxp.features)):
             # dimensionality preserved after subset
             pass
-        elif isinstance(new_features, self.self.sxp.features._constructor_sliced):
+        elif isinstance(new_features, self.sxp.features._constructor_sliced):
             # dimensionality reduced by 1, need to restore to original ndim
-            new_attr = pd.DataFrame(new_features)
+            new_features = pd.DataFrame(new_features)
         else:
             # single value returned, likely because subset returned a single cell, need to restore to original ndim
-            new_attr = pd.DataFrame([new_features], index=[key[0]], columns=[key[1]])
+            new_features = pd.DataFrame([new_features], index=[key[0]], columns=[key[1]])
 
         # conditionally restore correct data orientation
         # if dimensionality was changed during subset, orientation may have also been changed
