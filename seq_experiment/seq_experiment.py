@@ -24,6 +24,8 @@ class SeqExp(object):
 
     Container for the separate data frames containing the matching features, classifications, and metadata records.
 
+    Only the features table is required to create a new SeqExp object.
+
     """
 
     def __init__(self, features, classifications=None, metadata=None, seqs=None):
@@ -69,6 +71,11 @@ class SeqExp(object):
 
     @features.setter
     def features(self, features):
+        """Checks that if a feature table already exists the index and columns remain the same."""
+
+        if self._features is not None:
+            if not self._features.index.equals(features.index) and self._features.columns.equals(features.columns):
+                raise KeyError('new features index and columns must match the existing features')
 
         self._features = features
 
