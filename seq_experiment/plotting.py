@@ -80,16 +80,12 @@ def plot_abundance(sxp, axis=0, facet_by=None, color_by=None, cmap='Paired', fig
             if value not in facet_values:
                 facet_values.append(value)
 
-        # get indexer to use
-        indexers = get_indexer_mappings()
-        indexer = None
-        for k, v in indexers.items():
-            if v == facet_attr:
-                indexer = getattr(sxp, k)
-
-        # subset data
+        # subset data use loc indexer
         for value in facet_values:
-            data_array.append((value, indexer[facet_col == value].features))
+            if axis == 0:
+                data_array.append((value, getattr(sxp, 'loc')[:, facet_col == value].features))
+            elif axis == 1:
+                data_array.append((value, getattr(sxp, 'loc')[facet_col == value].features))
 
     # conditionally transpose the data depending what axis we are plotting along the x axis
     y_col = sxp.features.columns
