@@ -1,5 +1,5 @@
 """
-Copyright (c) 2017, Richard Campen
+Copyright (c) 2018, Richard Campen
 All rights reserved.
 Licensed under the Modified BSD License.
 For full license terms see LICENSE.txt
@@ -14,8 +14,6 @@ import matplotlib.pyplot as plt
 from matplotlib.cm import get_cmap
 from matplotlib.colors import LinearSegmentedColormap
 import matplotlib.patches as mpatches
-
-from seq_experiment.indexing import get_indexer_mappings
 
 
 def _make_segmented_cmap(cmap):

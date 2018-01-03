@@ -167,21 +167,6 @@ class Test(unittest.TestCase):
         except ValueError:
             self.fail('Editing feature_names raised ValueError unexpectedly')
 
-
-    def test_ordination_with_distance(self):
-
-        seq_exp = SeqExp(
-            features=self.test_features,
-            classifications=self.test_classifications,
-            metadata=self.test_metadata
-        )
-
-        try:
-            dist = squareform(pdist(seq_exp.features.transpose(), metric='braycurtis'))
-            ord = seq_exp.ordinate(method='nmds', distance=dist)
-        except Exception as e:
-            self.fail(e)
-
     # --------- test indexing --------- #
 
     def test_indexing_1(self):

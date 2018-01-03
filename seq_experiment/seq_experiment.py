@@ -1,5 +1,5 @@
 """
-Copyright (c) 2017, Richard Campen
+Copyright (c) 2018, Richard Campen
 All rights reserved.
 Licensed under the Modified BSD License.
 For full license terms see LICENSE.txt
@@ -10,11 +10,8 @@ from collections import OrderedDict
 from copy import deepcopy
 import functools
 import pandas as pd
-from scipy.spatial.distance import pdist, squareform
 
-from seq_experiment.distance import DistanceMatrix
 from seq_experiment.indexing import get_indexer_mappings, _Indexer
-from seq_experiment.ordination import pcoa, nmds, meta_nmds
 from seq_experiment.plotting import plot_abundance
 
 
@@ -477,83 +474,6 @@ class SeqExp(object):
 
         # return the new object
         return new_sxp
-
-    def distance(self, metric='braycurtis'):
-        """      
-        
-        :return: 
-        """
-
-        dist_metrics = ['braycurtis']
-
-        if metric in dist_metrics:
-            distance = squareform(pdist(self.features.transpose(), metric=metric))
-        else:
-            raise(ValueError('must supply a valid distance or dissimilarity metric.'))
-
-        # format results in pd.DataFrame
-        dist_df = pd.DataFrame(distance)
-        dist_df.index = self.sample_names
-        dist_df.columns = self.sample_names
-
-        # return as DistanceMatrix object
-        return DistanceMatrix(dist_df, metric=metric)
-
-    def ordinate(self, method, distance=None, metric=None, *args, **kwargs):
-        """
-        Performs an ordination on the SeqExp object using.
-        
-        Uses either a precomputed distance/dissimilarity matrix, or computes one for the user if supplied with a valid
-        mdistance metric.
-        
-        :param method: the ordination method to use
-        :type method: str
-        :param distance: distance or dissimilarity matrix to ordinate
-        :type distance: (optional) 2d np.array like or None
-        :param metric: (optional) metric to use for computing a distance matrix
-        :type metric: str
-
-        :return: 
-        
-        ..note:: User must supply either a precomputed distance matrix or a metric to compute a distance matrix with,
-            but not both. If a metric is supplied it must be a valid metric for `scipy.spatial.distance.pdist`.
-        
-        ..see also:: scipy.spatial.distance
-                
-        """
-
-        ord_methods = {
-            'pcoa': pcoa,
-            'nmds': meta_nmds
-        }
-        dist_metrics = ['braycurtis']
-
-        has_distance = distance is not None
-        has_metric = metric is not None
-
-        has_distance_or_metric = has_distance or has_metric
-        has_distance_and_metric = has_distance and has_metric
-
-        # enforce only distance or metric, but not both
-        if not (has_distance_or_metric and not has_distance_and_metric):
-            raise(ValueError('must supply either distance or metric, and not both.'))
-
-        # check for valid method
-        if method.lower() in ord_methods:
-
-            if not has_distance:
-                if metric in dist_metrics:
-                    # need to transpose feature table to get it in the correct orientation for pdist
-                    distance = squareform(pdist(self.features.transpose(), metric=metric))
-                else:
-                    raise(ValueError('must supply a valid metric for calculating distances/dissimilarities.'))
-
-                # perform ordination with specified method, passing additional arguments to the ordination functions
-                ord = ord_methods[method](dissimilarity_mtx=distance, *args, *kwargs)
-                return ord
-        else:
-            raise(ValueError('must supply a valid ordination method.'))
-
 
 # register advanced indexing methods to SeqExp object
 for _name in get_indexer_mappings():
