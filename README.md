@@ -1,31 +1,40 @@
 # seq-experiment
 
-## Overview
+Copyright &#169; 2018, Richard Campen. All rights reserved.
 
-seq-experiment is a library for the analysis of high-throughput sequencing data. It is designed to be used
-following the initial sequence processing step using your pipeline of choice (Mothur, Qiime, etc.) It is
-designed to provide some of the functionality found in the R package *phyloseq* in a Python environment. This
-package has overlaps, and sometimes pulls from the existing Python packages [PyCogent](http://pycogent.org/) 
-and [scikit-bio](http://scikit-bio.org/) in a lighter-weight format, and without the limitations on
-OS support that these two packages have (i.e. Windows support).
+See LICENSE.txt for full license conditions.
 
-The seq-experiment based analysis revolves around a `SeqExp` object that is functionally analogous to the
-phyloseq `phyloseq` object that stores abundance data, classificaiton data, and sample metadata. In 
-seq-experiment these three different data tables are stored in pandas DataFrame like objects that can be
-manipulated using the standard pandas API. Additonally, many of the basic functions that are performed on
-the combined data tables are implemented as methods on the encapsulating SeqExp object using an API similar
-to the pandas API.
+---
 
-## Installation
+### Overview
 
-Currently the way to install seq-exp is to clone/download this repository and copy it into your working
-directory.
+seq-experiment is a package designed to facilitate analysis of sequencing data. It does this through the 
+`SeqExp` object which contains feature abundance data (sequences, OTUs, etc) along with related 
+classifications, metadata, and raw sequences. The `SeqExp` object is built on top of the pandas library,
+with each of these data types stored in their own pandas DataFrames as attributes on the `SeqExp` object.
+The `SeqExp` object then provides methods to easily manipulate the data within each DataFrame simultaneously
+and intelligently. For example, grouping sequence abundances based on classifications or metadata. The 
+`SeqExp` object also provides some basic plotting of sequence abundance data, incorporating the 
+classifications and metadata. In this way the `SeqExp` object provides similar functionality to the 
+`phyloseq` object in the R package `phyloseq`, within a python environment.
 
-## Requirements
+---
 
-This package requires the following packages:
+### Installation
 
-* Scipy
+To install the most up to date version you should download/clone this repository and create a binary 
+distribution using `python setup.py bdist_wheel` that will create a .whl file in the dist folder. 
+You can then install seq-experiment with pip from the .whl file using `pip install <wheel_file_name>`. 
+The advantage of this method over just running `python setup.py install` is that you can easily 
+remove or update the package via pip.
+
+
+---
+
+### Requirements
+
+This package requires the following packages to run:
+
 * Numpy
 * Pandas
 * Matplotlib
