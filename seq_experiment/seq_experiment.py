@@ -175,7 +175,7 @@ class SeqExp(object):
 
         return '\n'.join(outputs) + '\n'
 
-    # -------------- subsetting -------------- #
+    # -------------- advanced subsetting/indexing -------------- #
 
     def __getitem__(self, key):
         """
@@ -277,23 +277,6 @@ class SeqExp(object):
         new_sxp.label = level
 
         return new_sxp
-
-    def groupby_metadata(self, data_label, func):
-        """Groups samples according to their metadata using the specified function."""
-
-        label_set = set(self.metadata[data_label])
-
-        new_feats_dict = OrderedDict()
-        for label in label_set:
-            classes = (self.metadata[self.metadata[data_label] == label]).index
-            features = self.features[classes]
-            feature_means = features.apply(func, axis=1)
-
-            new_feats_dict[label] = feature_means
-
-        new_feats_df = pd.concat(new_feats_dict, axis=1)
-
-        return new_feats_df
 
     def merge(self, right, component=None, sort_by='left'):
         """
@@ -432,13 +415,6 @@ class SeqExp(object):
                 new_classifications = None
 
             return SeqExp(new_features, new_classifications, self.metadata, new_seqs)
-
-    def concat(self):
-        """
-        
-        :return: 
-        """
-        pass
 
     # -------------- convenience methods -------------- #
 
