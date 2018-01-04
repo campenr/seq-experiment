@@ -13,7 +13,7 @@ except(IOError, ImportError):
 
 setup(
     name="seq-experiment",
-    version="0.1.0",
+    version="0.1.1",
     author="Richard Campen",
     author_email="richard@campen.co",
     license="Modified BSD License",
