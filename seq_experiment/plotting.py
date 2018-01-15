@@ -35,29 +35,31 @@ def _make_segmented_cmap(cmap):
         return cmap_
 
 
-def plot_abundance(sxp, axis=0, facet_by=None, color_by=None, cmap='Paired', figsize=None, **kwargs):
+# TODO: fix color-by; disabled for now
+# def plot_abundance(sxp, axis=0, facet_by=None, color_by=None, cmap='Paired', figsize=None, **kwargs):
+def plot_abundance(sxp, axis=0, facet_by=None, cmap='Paired', figsize=None, **kwargs):
 
     # need to check that facet_by and color_by arguments are valid, check axis argument simultaneously
     facet_attr = None
-    color_attr = None
+    # color_attr = None
     if axis == 0:
         # feature abundances grouped by row (features)
         # can facet by metadata and color by classifications
         if facet_by is not None and facet_by not in sxp.metadata.columns:
             raise IndexError('%s not in metadata.columns' % facet_by)
-        if color_by is not None and color_by not in sxp.classifications.columns:
-            raise IndexError('%s not in classifications.columns' % color_by)
+        # if color_by is not None and color_by not in sxp.classifications.columns:
+        #     raise IndexError('%s not in classifications.columns' % color_by)
         facet_attr = 'metadata'
-        color_attr = 'classifications'
+        # color_attr = 'classifications'
     elif axis == 1:
         # feature abundances grouped by columns (class/sample)
         # can facet by classification and color by metadata
         if facet_by is not None and facet_by not in sxp.classifications.columns:
             raise IndexError('%s not in classifications.columns' % facet_by)
-        if color_by is not None and color_by not in sxp.metadata.columns:
-            raise IndexError('%s not in metadata.columns' % color_by)
+        # if color_by is not None and color_by not in sxp.metadata.columns:
+        #     raise IndexError('%s not in metadata.columns' % color_by)
         facet_attr = 'classifications'
-        color_attr = 'metadata'
+        # color_attr = 'metadata'
     else:
         raise ValueError('axis should be either 0 or 1')
 
@@ -92,7 +94,8 @@ def plot_abundance(sxp, axis=0, facet_by=None, color_by=None, cmap='Paired', fig
         y_col = sxp.features.index
 
     # calculate colors for plotting
-    if color_by is None:
+    # if color_by is None:
+    if True:
         # color each item in the main axis separately
         if axis == 0:
             # color each feature separately
@@ -100,9 +103,9 @@ def plot_abundance(sxp, axis=0, facet_by=None, color_by=None, cmap='Paired', fig
         elif axis == 1:
             # color each class separately
             color_col = sxp.features.columns
-    else:
-        # get user specific column to color by
-        color_col = getattr(sxp, color_attr)[color_by]
+    # else:
+    #     # get user specific column to color by
+    #     color_col = getattr(sxp, color_attr)[color_by]
 
     # get column values and determine the set; we do this manually rather than use `set` to preserve order
     color_values = list()
