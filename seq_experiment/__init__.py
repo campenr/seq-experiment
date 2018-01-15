@@ -6,6 +6,6 @@ For full license terms see LICENSE.txt
 
 """
 
-__version__ = '0.1.1'
+__version__ = '0.1.2'
 
 from seq_experiment.seq_experiment import SeqExp
