@@ -250,7 +250,12 @@ class SeqExp(object):
         else:
             new_metadata = None
 
-        return SeqExp(features=new_features, classifications=new_classifications, metadata=new_metadata)
+        if self.seqs is not None:
+            new_seqs = self.seqs.loc[new_features.index]
+        else:
+            new_seqs = None
+
+        return SeqExp(features=new_features, classifications=new_classifications, metadata=new_metadata, seqs=new_seqs)
 
     def groupby_classification(self, level):
         """Group the SeqExp features by a classificaiton."""
