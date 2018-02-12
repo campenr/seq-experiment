@@ -144,6 +144,10 @@ def plot_abundance(sxp, axis=0, facet_by=None, cmap='Paired', figsize=None, **kw
     if figsize is None:
         figsize = (width, height)
 
+    # get title
+    # TODO: should move this to the figure_kw's dictionary
+    title = kwargs.pop('title', '')
+
     # create plotting area
     if len(data_array) == 0:
         raise ValueError('no data for plotting')
@@ -151,7 +155,12 @@ def plot_abundance(sxp, axis=0, facet_by=None, cmap='Paired', figsize=None, **kw
         # basic plotting with single axis
         data = data_array[0]
         fig, ax = plt.subplots(figsize=figsize)
-        ax = plot_bars(data=data[1], ax=ax, colors=colors, title=data[0], **kwargs)
+
+        # set title
+        if not title:
+            title = data[0]
+
+        ax = plot_bars(data=data[1], ax=ax, colors=colors, title=title, **kwargs)
     else:
         # faceted plotting with multiple axis
         fig, ax = plt.subplots(nrows=1, ncols=len(data_array), sharey=True, figsize=figsize,
@@ -159,6 +168,7 @@ def plot_abundance(sxp, axis=0, facet_by=None, cmap='Paired', figsize=None, **kw
                                             'wspace': 0.05})
         for i in range(len(data_array)):
             data = data_array[i]
+            # note we override title set by user here, not sure if this is desired or not...
             ax[i] = plot_bars(data=data[1], ax=ax[i], colors=colors, title=data[0], **kwargs)
 
     # add axis labels
