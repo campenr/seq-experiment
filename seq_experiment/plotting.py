@@ -42,11 +42,7 @@ def plot_abundance(sxp, axis=0, facet_by=None, cmap='Paired', gridspec_kw=None, 
     # deal with kwargs
     # kwargs contains kwargs for the call to pyplot.subplots, which itself contains kwargs for gridspec, subplot, and Figure
     # by the time we call plot_bar we only want kwargs lefts that are valid for matplotlib.axes.Axes.bar.
-    fig_kws = {
-        # 'dpi': kwargs.pop('dpi', None),
-        # 'edgecolor': edgecolor,
-        # 'linewidth': linewidth,
-    }
+    fig_kws = {}
     if gridspec_kw is None:
         gridspec_kw = {}
 
@@ -179,6 +175,10 @@ def plot_abundance(sxp, axis=0, facet_by=None, cmap='Paired', gridspec_kw=None, 
         fig, ax = plt.subplots(nrows=1, ncols=len(data_array), sharey=True, figsize=figsize,
                                gridspec_kw={'width_ratios':[len(data[1].columns) for data in data_array],
                                             'wspace': 0.05})
+        # set title
+        if title:
+            fig.suptitle(title)
+
         for i in range(len(data_array)):
             data = data_array[i]
             ax[i] = plot_bars(data=data[1], ax=ax[i], colors=colors, title=data[0], **kwargs)
