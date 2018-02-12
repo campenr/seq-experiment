@@ -37,7 +37,18 @@ def _make_segmented_cmap(cmap):
 
 # TODO: fix color-by; disabled for now
 # def plot_abundance(sxp, axis=0, facet_by=None, color_by=None, cmap='Paired', figsize=None, **kwargs):
-def plot_abundance(sxp, axis=0, facet_by=None, cmap='Paired', figsize=None, **kwargs):
+def plot_abundance(sxp, axis=0, facet_by=None, cmap='Paired', gridspec_kw=None, **kwargs):
+
+    # deal with kwargs
+    # kwargs contains kwargs for the call to pyplot.subplots, which itself contains kwargs for gridspec, subplot, and Figure
+    # by the time we call plot_bar we only want kwargs lefts that are valid for matplotlib.axes.Axes.bar.
+    fig_kws = {
+        # 'dpi': kwargs.pop('dpi', None),
+        # 'edgecolor': edgecolor,
+        # 'linewidth': linewidth,
+    }
+    if gridspec_kw is None:
+        gridspec_kw = {}
 
     # need to check that facet_by and color_by arguments are valid, check axis argument simultaneously
     facet_attr = None
@@ -141,8 +152,10 @@ def plot_abundance(sxp, axis=0, facet_by=None, cmap='Paired', figsize=None, **kw
     height = 1 * scale
     width = len(y_col)
 
-    if figsize is None:
+    if kwargs.pop('figsize', None) is None:
         figsize = (width, height)
+
+    fig_kws['figsize'] = figsize
 
     # get title
     # TODO: should move this to the figure_kw's dictionary
@@ -154,7 +167,7 @@ def plot_abundance(sxp, axis=0, facet_by=None, cmap='Paired', figsize=None, **kw
     elif len(data_array) == 1:
         # basic plotting with single axis
         data = data_array[0]
-        fig, ax = plt.subplots(figsize=figsize)
+        fig, ax = plt.subplots(**fig_kws)
 
         # set title
         if not title:
@@ -168,7 +181,6 @@ def plot_abundance(sxp, axis=0, facet_by=None, cmap='Paired', figsize=None, **kw
                                             'wspace': 0.05})
         for i in range(len(data_array)):
             data = data_array[i]
-            # note we override title set by user here, not sure if this is desired or not...
             ax[i] = plot_bars(data=data[1], ax=ax[i], colors=colors, title=data[0], **kwargs)
 
     # add axis labels
@@ -180,12 +192,21 @@ def plot_abundance(sxp, axis=0, facet_by=None, cmap='Paired', figsize=None, **kw
     # add legend
     handles = list()
     labels = list()
+
+    patch_linewidth = kwargs.get('linewidth', None)
+    patch_edgecolor = kwargs.get('edgecolor', None)
+
     for i in range(len(color_values)):
 
         patch_color = colors_set[i]
         patch_label = color_values[i]
 
-        handles.append(mpatches.Patch(color=patch_color, label=patch_label))
+        handles.append(mpatches.Patch(
+            facecolor=patch_color,
+            label=patch_label,
+            linewidth=patch_linewidth,
+            edgecolor=patch_edgecolor
+        ))
         labels.append(patch_label)
 
     # to help with alignment we place the legend on the axes object
